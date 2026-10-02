@@ -369,9 +369,9 @@ const BLASSVEC = [
 ];
 
 if(EASY.length!==168 || NORMAL.length!==300 || IMPOSSIBLE.length!==168 || BLASSVEC.length!==30)
-  throw new Error(`Banco inválido: fácil=${EASY.length}, difícil=${HARD.length}, imposible=${IMPOSSIBLE.length}, blassvec=${BLASSVEC.length}`);
+  throw new Error(`Banco inválido: fácil=${EASY.length}, normal=${NORMAL.length}, imposible=${IMPOSSIBLE.length}, blassvec=${BLASSVEC.length}`);
 
-export const QUESTIONS=[...EASY,...HARD,...IMPOSSIBLE,...BLASSVEC];
+export const QUESTIONS=[...EASY,...NORMAL,...IMPOSSIBLE,...BLASSVEC];
 export const QUESTION_SETS={
   facil:EASY.map((_,i)=>i),
   dificil:NORMAL.map((_,i)=>EASY.length+i),
