@@ -790,7 +790,7 @@ async function api(req,env) {
       const dailyStreak=s?.daily_last_date===yesterday?Number(s.daily_streak||0)+1:1;
       const bestDaily=Math.max(Number(s?.best_daily_streak||0),dailyStreak),wk=weekKey(),xp=Number(s?.xp||0)+(correct?50:10);
       await env.DB.prepare("UPDATE user_stats SET xp=?,daily_streak=?,best_daily_streak=?,daily_last_date=?,weekly_score=?,weekly_key=?,updated_at=? WHERE user_id=?")
-        .bind(xp,dailyStreak,bestDaily,date,Number(s?.weekly_key||"")===wk?Number(s?.weekly_score||0):0,wk,now,u.id).run();
+        .bind(xp,dailyStreak,bestDaily,date,s?.weekly_key===wk?Number(s?.weekly_score||0):0,wk,now,u.id).run();
       await env.DB.prepare("UPDATE users SET coins=coins+100,updated_at=? WHERE id=?").bind(now,u.id).run();
       const after=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(u.id).first();
       await maybeUnlockAchievements(env,u.id,after);
@@ -1017,6 +1017,7 @@ async function api(req,env) {
     const score=game.score+points;
     const next=game.idx+1;
     let totalCoins=null;
+    await updateAnswerStats(env,u.id,correct,points);
 
     if(correct) {
       const bonus=next>=ids.length?50:0;
