@@ -127,6 +127,7 @@ th{color:var(--muted);font-weight:650}
 .name-color-preview{height:72px;border-radius:12px;display:grid;place-items:center;font-size:28px;font-weight:950;border:1px solid var(--line);background:var(--card2)}
 .owner-color-preview{background:linear-gradient(90deg,#35d399,#f6c453,#7dd3fc,#c084fc,#35d399)!important;background-size:200% 100%;animation:ownerShift 4s linear infinite}
 @keyframes ownerShift{to{background-position:200% 0}}
+.broadcast-live{position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-140%);z-index:80;width:min(680px,calc(100% - 28px));padding:16px 18px;border:1px solid var(--accent);background:linear-gradient(135deg,rgba(13,20,34,.98),rgba(17,24,39,.98));border-radius:16px;box-shadow:0 20px 70px rgba(0,0,0,.48),0 0 25px rgba(53,211,154,.18);transition:transform .28s ease}.broadcast-live.show{transform:translateX(-50%) translateY(0)}.broadcast-live strong{display:block;margin-bottom:4px}.broadcast-live .small{color:var(--muted)}
 .daily-gift{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px;border:1px solid #6f5a18;background:linear-gradient(135deg,#2b230b,#171c22);border-radius:14px;margin:16px 0}.daily-gift-info{display:flex;align-items:center;gap:12px}.daily-gift-icon{font-size:30px}.daily-gift-title{font-weight:900}.daily-gift-desc{font-size:13px;color:var(--muted)}.gift-claimed{opacity:.75}
 .notice-modal{position:fixed;inset:0;z-index:50;background:rgba(2,6,12,.72);display:grid;place-items:center;padding:20px}
 .notice-modal.hidden{display:none}
@@ -255,6 +256,8 @@ th{color:var(--muted);font-weight:650}
   </section>
 </main>
 
+<div id="broadcastLive" class="broadcast-live" aria-live="polite"><strong>📢 <span id="broadcastLiveTitle">Mensaje global</span></strong><div id="broadcastLiveMessage"></div><div id="broadcastLiveMeta" class="small"></div></div>
+
 <div id="notificationModal" class="notice-modal hidden" role="dialog" aria-modal="true" aria-labelledby="notificationTitle">
   <div class="notice-box">
     <h2 id="notificationTitle">🔔 Notificación</h2>
@@ -361,7 +364,7 @@ async function submitAuth(){
     const x=await api(path,{method:"POST",body:JSON.stringify({username,password})});
     user=x.user;
     $("auth").classList.add("hidden");$("app").classList.remove("hidden");
-    updateHome();accountUI();showView("homeView");loadRanking();loadDailyGift();showNotifications(x.notifications);
+    updateHome();accountUI();showView("homeView");loadRanking();loadDailyGift();startGlobalBroadcastPolling();showNotifications(x.notifications);
   }catch(e){$("authMsg").textContent=e.message}
   finally{btn.disabled=false;btn.textContent=mode==="register"?"Crear mi cuenta":"Entrar"}
 }
@@ -390,6 +393,51 @@ async function claimDailyGift(){
     btn.textContent="✅ Ya reclamado";$("giftStatus").textContent="¡Recibiste 150 monedas! Volvé mañana.";beep(980);
     $("dailyGiftBox").classList.add("gift-claimed");
   }catch(e){btn.disabled=false;btn.textContent="🎁 Reclamar +150";$("giftStatus").textContent=e.message||"No se pudo reclamar el regalo.";beep(220)}
+}
+let broadcastTimer=null,broadcastLastId=0,broadcastStarted=false,broadcastShowing=false;
+function showGlobalBroadcast(m){
+  if(!m)return;
+  $("broadcastLiveTitle").textContent="Mensaje de "+m.sender;
+  $("broadcastLiveMessage").textContent=m.message;
+  $("broadcastLiveMeta").textContent=new Date(m.createdAt).toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"});
+  const el=$("broadcastLive");el.classList.add("show");
+  clearTimeout(broadcastShowing);broadcastShowing=setTimeout(()=>el.classList.remove("show"),7000);
+  beep(760);
+}
+async function pollGlobalBroadcast(initial=false){
+  if(!user||broadcastLiveDisabled)return;
+  try{
+    const x=await api("/api/broadcast?after="+encodeURIComponent(broadcastLastId));
+    const msgs=x.messages||[];
+    if(initial){
+      if(msgs.length) broadcastLastId=Math.max(...msgs.map(m=>Number(m.id)||0));
+    }else{
+      for(const m of msgs){broadcastLastId=Math.max(broadcastLastId,Number(m.id)||0);showGlobalBroadcast(m);}
+    }
+  }catch{}
+}
+function startGlobalBroadcastPolling(){
+  if(broadcastStarted)return;
+  broadcastStarted=true;
+  pollGlobalBroadcast(true);
+  broadcastTimer=setInterval(()=>pollGlobalBroadcast(false),2500);
+}
+function stopGlobalBroadcastPolling(){
+  if(broadcastTimer)clearInterval(broadcastTimer);
+  broadcastTimer=null;broadcastStarted=false;
+}
+async function sendGlobalBroadcast(){
+  const input=$("globalBroadcastInput"),btn=$("globalBroadcastBtn"),status=$("globalBroadcastStatus");
+  const message=input.value.trim();
+  if(!message){status.textContent="Escribí un mensaje.";return}
+  btn.disabled=true;status.textContent="Enviando…";
+  try{
+    const x=await api("/api/dev/broadcast",{method:"POST",body:JSON.stringify({message})});
+    broadcastLastId=Math.max(broadcastLastId,Number(x.message?.id)||0);
+    input.value="";status.textContent="✅ Enviado a todos.";showGlobalBroadcast(x.message);
+    setTimeout(()=>status.textContent="",2500);
+  }catch(e){status.textContent=e.message||"No se pudo enviar."}
+  finally{btn.disabled=false}
 }
 function updateHome(){
   if(!user)return;
@@ -503,10 +551,10 @@ async function loadRanking(){
 async function refreshMe(){
   try{
     const x=await api("/api/me");
-    if(x.user){user=x.user;$("auth").classList.add("hidden");$("app").classList.remove("hidden");updateHome();showView("homeView");loadRanking();loadDailyGift();showNotifications(x.notifications)}
+    if(x.user){user=x.user;$("auth").classList.add("hidden");$("app").classList.remove("hidden");updateHome();showView("homeView");loadRanking();loadDailyGift();startGlobalBroadcastPolling();showNotifications(x.notifications)}
   }catch{}
 }
-async function logout(){try{await api("/api/logout",{method:"POST"})}finally{location.reload()}}
+async function logout(){try{stopGlobalBroadcastPolling();await api("/api/logout",{method:"POST"})}finally{location.reload()}}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
 
 function downloadProfilePhoto(){
