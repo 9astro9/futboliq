@@ -8,14 +8,14 @@ const DIFFICULTY_META = {
 
 const STYLES = [
   {id:"clasico",name:"Clásico",price:0,icon:"⚽",desc:"El estilo original de FUTBOLIQ."},
-  {id:"neon",name:"Neón",price:300,icon:"⚡",desc:"Perfil brillante con estética futurista."},
-  {id:"fuego",name:"Fuego",price:600,icon:"🔥",desc:"Un perfil intenso para competir."},
-  {id:"hielo",name:"Hielo",price:600,icon:"❄️",desc:"Estilo frío y elegante."},
-  {id:"oro",name:"Oro",price:1000,icon:"👑",desc:"Perfil dorado para coleccionistas."},
-  {id:"carbono",name:"Carbono",price:1400,icon:"🖤",desc:"Estilo oscuro de alto nivel."},
-  {id:"retro",name:"Retro",price:900,icon:"📼",desc:"Inspirado en el fútbol clásico."},
-  {id:"cosmico",name:"Cósmico",price:1800,icon:"🌌",desc:"Un perfil con estilo espacial."},
-  {id:"mundial",name:"Mundial",price:2500,icon:"🏆",desc:"Para quienes viven el fútbol."}
+  {id:"neon",name:"Neón",price:2500,icon:"⚡",desc:"Perfil brillante con estética futurista."},
+  {id:"fuego",name:"Fuego",price:5000,icon:"🔥",desc:"Un perfil intenso para competir."},
+  {id:"hielo",name:"Hielo",price:5000,icon:"❄️",desc:"Estilo frío y elegante."},
+  {id:"oro",name:"Oro",price:9000,icon:"👑",desc:"Perfil dorado para coleccionistas."},
+  {id:"carbono",name:"Carbono",price:12000,icon:"🖤",desc:"Estilo oscuro de alto nivel."},
+  {id:"retro",name:"Retro",price:7500,icon:"📼",desc:"Inspirado en el fútbol clásico."},
+  {id:"cosmico",name:"Cósmico",price:15000,icon:"🌌",desc:"Un perfil con estilo espacial."},
+  {id:"mundial",name:"Mundial",price:22000,icon:"🏆",desc:"Para quienes viven el fútbol."}
 ];
 
 const STYLE_BY_ID = new Map(STYLES.map(s=>[s.id,s]));
