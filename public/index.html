@@ -128,7 +128,7 @@ th{color:var(--muted);font-weight:650}
 .owner-color-preview{background:linear-gradient(90deg,#35d399,#f6c453,#7dd3fc,#c084fc,#35d399)!important;background-size:200% 100%;animation:ownerShift 4s linear infinite}
 @keyframes ownerShift{to{background-position:200% 0}}
 .owner-chat-box{height:390px;overflow:auto;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--card2);display:flex;flex-direction:column;gap:9px}.owner-chat-msg{max-width:88%;padding:10px 12px;border:1px solid var(--line);border-radius:13px;background:var(--card)}.owner-chat-msg.owner{align-self:flex-end;border-color:rgba(53,211,154,.45);background:rgba(53,211,154,.08)}.owner-chat-name{font-size:12px;font-weight:900;margin-bottom:3px}.owner-chat-text{white-space:pre-wrap;overflow-wrap:anywhere}.owner-chat-time{font-size:11px;color:var(--muted);margin-top:3px}.owner-chat-compose{display:flex;gap:8px;margin-top:10px}.owner-chat-compose input{flex:1}.owner-chat-readonly{margin-top:10px;padding:11px 13px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);font-size:13px}.owner-chat-empty{padding:30px 10px;text-align:center;color:var(--muted)}.broadcast-live{position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-140%);z-index:80;width:min(680px,calc(100% - 28px));padding:16px 18px;border:1px solid var(--accent);background:linear-gradient(135deg,rgba(13,20,34,.98),rgba(17,24,39,.98));border-radius:16px;box-shadow:0 20px 70px rgba(0,0,0,.48),0 0 25px rgba(53,211,154,.18);transition:transform .28s ease}.broadcast-live.show{transform:translateX(-50%) translateY(0)}.broadcast-live strong{display:block;margin-bottom:4px}.broadcast-live .small{color:var(--muted)}
-.daily-gift{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px;border:1px solid #6f5a18;background:linear-gradient(135deg,#2b230b,#171c22);border-radius:14px;margin:16px 0}.daily-gift-info{display:flex;align-items:center;gap:12px}.daily-gift-icon{font-size:30px}.daily-gift-title{font-weight:900}.daily-gift-desc{font-size:13px;color:var(--muted)}.gift-claimed{opacity:.75}
+.weekend-boost{padding:14px 16px;border:1px solid #7c5cff;background:linear-gradient(135deg,#22134d,#0e2533);border-radius:14px;margin:12px 0;font-weight:900;text-align:center}.weekend-boost strong{font-size:18px}.weekend-boost small{display:block;color:var(--muted);font-weight:500;margin-top:2px}.daily-gift{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px;border:1px solid #6f5a18;background:linear-gradient(135deg,#2b230b,#171c22);border-radius:14px;margin:16px 0}.daily-gift-info{display:flex;align-items:center;gap:12px}.daily-gift-icon{font-size:30px}.daily-gift-title{font-weight:900}.daily-gift-desc{font-size:13px;color:var(--muted)}.gift-claimed{opacity:.75}
 .notice-modal{position:fixed;inset:0;z-index:50;background:rgba(2,6,12,.72);display:grid;place-items:center;padding:20px}
 .notice-modal.hidden{display:none}
 .notice-box{width:min(520px,100%);background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 25px 80px rgba(0,0,0,.45)}
@@ -187,6 +187,7 @@ th{color:var(--muted);font-weight:650}
       <div class="daily-gift-info"><div class="daily-gift-icon">🎁</div><div><div class="daily-gift-title">Regalo diario · +150 🪙</div><div id="giftStatus" class="daily-gift-desc">Reclamá tus 150 monedas de hoy.</div></div></div>
       <button class="btn gold" id="dailyGiftBtn" onclick="claimDailyGift()">🎁 Reclamar +150</button>
     </div>
+    <div id="weekendBoostBanner" class="weekend-boost hidden"></div>
 
     <div class="menu-grid">
       <div class="menu-card" onclick="showView('playView')"><div class="menu-icon">🎮</div><h3>Jugar</h3><p>Elegí una dificultad y empezá una partida.</p></div>
@@ -382,13 +383,31 @@ function accountUI(){
   const betaBadge=user.betaTester?"<span class='badge-beta'>BETA TESTER</span>":"";
   $("accountArea").innerHTML="<span class='small "+(user.owner?"":"muted")+"'>"+nameHtml(user.username,user.nameColor,user.owner)+ownerBadge+betaBadge+" · 🪙 "+Number(user.coins||0).toLocaleString("es-ES")+"</span><button class='btn' onclick='logout()'>Salir</button>";
 }
+function weekendMultiplierUI(){
+  try{
+    const day=new Intl.DateTimeFormat("en-US",{timeZone:"America/Montevideo",weekday:"short"}).format(new Date());
+    return(day==="Sat"||day==="Sun")?3:1;
+  }catch{
+    const d=new Date().getUTCDay();return(d===0||d===6)?3:1;
+  }
+}
+function updateWeekendUI(){
+  const boost=weekendMultiplierUI(),banner=$("weekendBoostBanner"),btn=$("dailyGiftBtn");
+  if(boost===3){
+    if(banner){banner.classList.remove("hidden");banner.innerHTML="<strong>🚀 FINDE x3 ACTIVADO</strong><small>Triple EXP y triple monedas en las recompensas del juego. El regalo diario da +450 🪙.</small>"}
+    if(btn&&!btn.disabled)btn.textContent="🎁 Reclamar +450";
+  }else{
+    if(banner){banner.classList.add("hidden");banner.innerHTML=""}
+    if(btn&&!btn.disabled)btn.textContent="🎁 Reclamar +150";
+  }
+}
 async function loadDailyGift(){
   if(!user)return;
   try{
     const x=await api("/api/daily-gift");
     const btn=$("dailyGiftBtn"),status=$("giftStatus"),box=$("dailyGiftBox");
     if(x.claimed){btn.textContent="✅ Ya reclamado";btn.disabled=true;box.classList.add("gift-claimed");status.textContent="Ya cobraste las 150 monedas de hoy. Volvé mañana."}
-    else{btn.textContent="🎁 Reclamar +150";btn.disabled=false;box.classList.remove("gift-claimed");status.textContent="Reclamá tus 150 monedas de hoy."}
+    else{btn.disabled=false;box.classList.remove("gift-claimed");btn.textContent=weekendMultiplierUI()===3?"🎁 Reclamar +450":"🎁 Reclamar +150";status.textContent=weekendMultiplierUI()===3?"Reclamá tus 450 monedas de hoy por el x3 del finde.":"Reclamá tus 150 monedas de hoy."}
     if(x.coins!==undefined){user.coins=x.coins;updateHome()}
   }catch{if($("giftStatus"))$("giftStatus").textContent="No se pudo comprobar el regalo diario."}
 }
@@ -398,9 +417,9 @@ async function claimDailyGift(){
   try{
     const x=await api("/api/daily-gift",{method:"POST",body:"{}"});
     user.coins=x.coins;updateHome();
-    btn.textContent="✅ Ya reclamado";$("giftStatus").textContent="¡Recibiste 150 monedas! Volvé mañana.";beep(980);
+    btn.textContent="✅ Ya reclamado";$("giftStatus").textContent="¡Recibiste "+(weekendMultiplierUI()===3?"450":"150")+" monedas! Volvé mañana.";beep(980);
     $("dailyGiftBox").classList.add("gift-claimed");
-  }catch(e){btn.disabled=false;btn.textContent="🎁 Reclamar +150";$("giftStatus").textContent=e.message||"No se pudo reclamar el regalo.";beep(220)}
+  }catch(e){btn.disabled=false;btn.textContent=weekendMultiplierUI()===3?"🎁 Reclamar +450":"🎁 Reclamar +150";$("giftStatus").textContent=e.message||"No se pudo reclamar el regalo.";beep(220)}
 }
 let broadcastTimer=null,broadcastLastId=0,broadcastStarted=false,broadcastShowing=false;let broadcastLiveDisabled=false;
 function showGlobalBroadcast(m){
