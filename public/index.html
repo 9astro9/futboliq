@@ -259,6 +259,16 @@ th{color:var(--muted);font-weight:650}
     <h2 style="margin-top:0">Consola de desarrollador</h2>
     <p class="muted small">Acceso administrativo. Los cambios se aplican en el servidor.</p>
     <div id="devStats" class="status"></div>
+    <div id="rewardMultiplierAdmin" class="card" style="margin-top:14px">
+      <h3 style="margin-top:0">🚀 Multiplicador de recompensas</h3>
+      <p class="small muted">El valor automático es <strong>x3</strong> los sábados y domingos y x1 el resto de la semana. Podés poner el multiplicador que quieras; el valor manual reemplaza al automático hasta que el restablezcas.</p>
+      <div class="actions" style="align-items:center">
+        <input id="rewardMultiplierInput" type="number" min="0" max="100" step="0.1" value="1" style="max-width:150px" aria-label="Multiplicador">
+        <button class="btn gold" id="rewardMultiplierSave" onclick="setRewardMultiplier()">Aplicar multiplicador</button>
+        <button class="btn" id="rewardMultiplierAuto" onclick="resetRewardMultiplier()">Usar automático</button>
+      </div>
+      <div id="rewardMultiplierStatus" class="small muted" style="margin-top:8px"></div>
+    </div>
     <div id="devUsers" class="top-table" style="margin-top:12px"></div>
     <div id="devAudit" class="top-table" style="margin-top:18px"></div>
     <button class="btn danger" onclick="closeDev()">Cerrar consola</button>
@@ -675,6 +685,54 @@ function downloadProfilePhoto(){
   ctx.font="800 28px system-ui";if(badges.length)ctx.fillText(badges.join(" · "),size/2,840);
   c.toBlob(blob=>{if(!blob)return;const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="FUTBOLIQ-"+String(user.username||"perfil").replace(/[^A-Za-z0-9_-]/g,"_")+".png";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)},"image/png");
 }
+async function loadRewardMultiplier(){
+  const box=$("rewardMultiplierAdmin");
+  if(!box||!user||!user.owner)return;
+  const status=$("rewardMultiplierStatus"),input=$("rewardMultiplierInput");
+  try{
+    const x=await api("/api/dev/reward-multiplier");
+    input.value=x.override===null||x.override===undefined?String(x.effective):String(x.override);
+    status.textContent=x.override===null
+      ? "🟢 Automático activo · ahora: x"+Number(x.effective).toLocaleString("es-ES")
+      : "🟡 Multiplicador manual activo · ahora: x"+Number(x.effective).toLocaleString("es-ES");
+  }catch(e){status.textContent=e.message||"No se pudo cargar el multiplicador."}
+}
+async function setRewardMultiplier(){
+  const input=$("rewardMultiplierInput"),status=$("rewardMultiplierStatus"),btn=$("rewardMultiplierSave");
+  const value=Number(input.value);
+  if(!Number.isFinite(value)||value<0||value>100){status.textContent="El multiplicador debe estar entre x0 y x100.";return}
+  btn.disabled=true;status.textContent="Guardando…";
+  try{
+    const x=await api("/api/dev/reward-multiplier",{method:"POST",body:JSON.stringify({multiplier:value})});
+    status.textContent="✅ Multiplicador global: x"+Number(x.effective).toLocaleString("es-ES");
+    updateWeekendUIWithMultiplier(x.effective);
+  }catch(e){status.textContent=e.message||"No se pudo cambiar."}
+  finally{btn.disabled=false}
+}
+async function resetRewardMultiplier(){
+  const status=$("rewardMultiplierStatus"),btn=$("rewardMultiplierAuto");
+  btn.disabled=true;status.textContent="Restableciendo…";
+  try{
+    const x=await api("/api/dev/reward-multiplier",{method:"POST",body:JSON.stringify({multiplier:null})});
+    status.textContent="✅ Automático activo · ahora: x"+Number(x.effective).toLocaleString("es-ES");
+    updateWeekendUIWithMultiplier(x.effective);
+    $("rewardMultiplierInput").value=String(x.effective);
+  }catch(e){status.textContent=e.message||"No se pudo restablecer."}
+  finally{btn.disabled=false}
+}
+function updateWeekendUIWithMultiplier(multiplier){
+  const banner=$("weekendBoostBanner"),btn=$("dailyGiftBtn");
+  const boost=Number(multiplier||1);
+  if(banner){
+    if(boost!==1){
+      banner.classList.remove("hidden");
+      banner.innerHTML="<strong>🚀 MULTIPLICADOR x"+boost+"</strong><small>EXP y monedas de recompensa se están multiplicando por x"+boost+".</small>";
+    }else{
+      banner.classList.add("hidden");banner.innerHTML="";
+    }
+  }
+  if(btn&&!btn.disabled)btn.textContent="🎁 Reclamar +"+Math.round(150*boost);
+}
 async function devConsole(){
   if(!user||user.role!=="admin"){alert("La consola requiere una cuenta administradora.");return}
   const code=prompt("Código de desarrollador:");if(code===null)return;
@@ -684,6 +742,7 @@ async function devConsole(){
 async function loadDev(){
   const [u,s,a]=await Promise.all([api("/api/dev/users"),api("/api/dev/stats"),api("/api/dev/audit")]);
   const viewerOwner=!!u.viewerOwner;
+  const rewardBox=$("rewardMultiplierAdmin");if(rewardBox)rewardBox.classList.toggle("hidden",!viewerOwner);if(viewerOwner)await loadRewardMultiplier();
   $("devStats").innerHTML="<span>Usuarios: <strong>"+s.users+"</strong></span><span>Partidas activas: <strong>"+s.activeGames+"</strong></span><span>Sesiones: <strong>"+s.activeSessions+"</strong></span>"+(viewerOwner?"<span class='badge-owner'>OWNER</span>":"");
   const rows=(u.users||[]).map(r=>{
     const owner=r.owner?"<span class='badge-owner'>OWNER</span>":"";
