@@ -120,6 +120,13 @@ async function ensureDatabase(env) {
         PRIMARY KEY(user_id,claim_date),
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS broadcast_messages(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_user_id INTEGER,
+        sender_username TEXT NOT NULL,
+        message TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      `),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_games_user ON games(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_dev_expiry ON dev_sessions(expires_at)"),
@@ -127,7 +134,7 @@ async function ensureDatabase(env) {
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_styles_user ON user_styles(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_name_colors_user ON user_name_colors(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id,read_at)"),
-      env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_broadcast_created ON broadcast_messages(created_at)")
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_broadcast_created ON broadcast_messages(created_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_daily_gifts_date ON daily_gifts(claim_date)"),
       env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_nocase ON users(username COLLATE NOCASE)")
     ]);
@@ -748,6 +755,7 @@ async function api(req,env) {
       if(action==="reset") {
         if(!target) return json({error:"Cuenta no encontrada."},404);
         if(isOwnerName(target.username,env)) return json({error:"El Owner no puede ser borrado."},403);
+        await log(env,admin.id,"account_delete",id,{username:target.username});
         await env.DB.batch([
           env.DB.prepare("DELETE FROM games WHERE user_id=?").bind(id),
           env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(id),
@@ -758,7 +766,6 @@ async function api(req,env) {
           env.DB.prepare("DELETE FROM daily_gifts WHERE user_id=?").bind(id),
           env.DB.prepare("DELETE FROM users WHERE id=?").bind(id)
         ]);
-        await log(env,admin.id,"account_delete",id,{username:target.username});
         return json({ok:true,deleted:true,username:target.username});
       }
       if(action==="promote") {
