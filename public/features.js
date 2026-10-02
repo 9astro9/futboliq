@@ -190,7 +190,7 @@ async function loadLive(){
   liveTimer=setInterval(draw,1000);
 }
 async function launchLive(){
-  try{await api("/api/dev/live/start",{method:"POST",body:"{}"});loadLive()}catch(e){alert(e.message||"Primero abrí la consola de desarrollador.")}
+  try{await api("/api/live/start",{method:"POST",body:"{}"});loadLive()}catch(e){alert(e.message||"Primero abrí la consola de desarrollador.")}
 }
 
 async function loadFriends(){
