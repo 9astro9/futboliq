@@ -163,7 +163,7 @@ function renderDailyQuestion(x){
   box.innerHTML=`<div class="card">${typeof categoryBadge==="function"?categoryBadge(q.category):"<div class='small muted'>"+esc(q.category)+"</div>"}<div class="small muted">Pregunta ${Number(x.idx)+1}/${x.total}</div><h2 class="question">${esc(q.q)}</h2><div class="feature-answer-grid">${q.options.map((o,i)=>`<button class="btn option" data-daily-choice="${i}">${esc(o)}</button>`).join("")}</div><p class="small muted">Puntos: ${x.score}</p></div>`;
   document.querySelectorAll("[data-daily-choice]").forEach(b=>b.onclick=async()=>{
     document.querySelectorAll("[data-daily-choice]").forEach(z=>z.disabled=true);
-    try{const y=await api("/api/daily-challenge/answer",{method:"POST",body:JSON.stringify({choice:Number(b.dataset.dailyChoice)})});if(y.done){renderDailyQuestion({completed:true,score:y.score});showGlobalBroadcast({sender:"FUTBOLIQ",message:"¡Desafío diario completado!",createdAt:Date.now()})}else renderDailyQuestion({...y,total:x.total,idx:(x.idx||0)+1})}catch(e){alert(e.message);loadDaily()}
+    try{const y=await api("/api/daily-challenge/answer",{method:"POST",body:JSON.stringify({choice:Number(b.dataset.dailyChoice)})});if(y.done){if(y.coins!==undefined){user.coins=Number(y.coins);if(typeof updateHome==="function")updateHome()}renderDailyQuestion({completed:true,score:y.score});showGlobalBroadcast({sender:"FUTBOLIQ",message:"¡Desafío diario completado!",createdAt:Date.now()})}else renderDailyQuestion({...y,total:x.total,idx:(x.idx||0)+1})}catch(e){alert(e.message);loadDaily()}
   });
 }
 
@@ -183,7 +183,7 @@ async function loadLive(){
       box.innerHTML=`<div class="card live-card">${typeof categoryBadge==="function"?categoryBadge(x.category):"<div class='small muted'>"+esc(x.category)+"</div>"}<div class="live-timer">00:${String(left).padStart(2,"0")}</div><h2 class="question">${esc(x.q)}</h2>${x.answered?"<div class='notice'>✅ Ya respondiste esta pregunta.</div>":"<div class='feature-answer-grid'>"+x.options.map((o,i)=>"<button class='btn option' data-live-choice='"+i+"'>"+esc(o)+"</button>").join("")+"</div>"}<p class="small muted">Respuestas: ${x.answers||0} · Correctas: ${x.correctAnswers||0}</p></div>`;
       document.querySelectorAll("[data-live-choice]").forEach(b=>b.onclick=async()=>{
         document.querySelectorAll("[data-live-choice]").forEach(z=>z.disabled=true);
-        try{const y=await api("/api/live/answer",{method:"POST",body:JSON.stringify({liveId:x.id,choice:Number(b.dataset.liveChoice)})});box.insertAdjacentHTML("beforeend","<p class='notice'>"+(y.correct?"✅ ¡Correcto! +25 🪙":"❌ Incorrecto.")+"</p>");setTimeout(draw,800)}catch(e){alert(e.message);draw()}
+        try{const y=await api("/api/live/answer",{method:"POST",body:JSON.stringify({liveId:x.id,choice:Number(b.dataset.liveChoice)})});if(y.coins!==undefined){user.coins=Number(y.coins);if(typeof updateHome==="function")updateHome()}box.insertAdjacentHTML("beforeend","<p class='notice'>"+(y.correct?"✅ ¡Correcto! +"+Number(y.reward||0).toLocaleString("es-ES")+" 🪙":"❌ Incorrecto.")+"</p>");setTimeout(draw,800)}catch(e){alert(e.message);draw()}
       });
     }catch(e){box.innerHTML="<p class='feature-muted'>"+esc(e.message)+"</p>"}
   }
@@ -345,7 +345,10 @@ function careerDecisionOptions(c){
 }
 function careerApplyDecision(c,id){
   const opt=careerDecisionOptions(c).find(x=>x.id===id)||careerDecisionOptions(c)[0];
-  c.decisionHistory.push({season:c.season,choice:opt.title});
+  const previous=c.decisionHistory.findIndex(x=>Number(x.season)===Number(c.season));
+  const entry={season:c.season,choice:opt.title};
+  if(previous>=0)c.decisionHistory[previous]=entry;
+  else c.decisionHistory.push(entry);
   return opt;
 }
 function careerStartWithClub(c,club){
@@ -439,7 +442,7 @@ function loadCareer(){
   const need=careerXpNeed(c),pct=Math.min(100,c.xp/need*100),options=careerDecisionOptions(c),transfer=careerPossibleTransfer(c),club=careerClubByName(c.club);
   box.innerHTML=`<div class="career-hero"><div class="career-avatar">${esc((c.name||"?").slice(0,1).toUpperCase())}</div><div class="card">
     <h2>${esc(c.name)}</h2><p><strong>${esc(c.position)}</strong> · ${esc(c.club)} · #${c.dorsal}</p><p>${esc(c.nationality)} · ${esc(c.style)} · ${esc(c.foot)}</p>
-    <div class="career-rank-line"><span class="rank-badge rank-elite">OVR ${c.ovr}</span><span class="small muted">${c.age} años · Temporada ${c.season}/24 · Contrato ${c.contractYears} años</span></div>
+    <div class="career-rank-line"><span class="rank-badge ${c.ovr>=90?"rank-vip":c.ovr>=80?"rank-elite":c.ovr>=70?"rank-profesional":c.ovr>=60?"rank-amateur":"rank-novato"}">OVR ${c.ovr}</span><span class="small muted">${c.age} años · Temporada ${c.season}/24 · Contrato ${c.contractYears} años</span></div>
     <div class="feature-progress"><i style="width:${pct}%"></i></div><p class="small muted">Nivel ${c.level} · ${c.xp}/${need} XP · Potencial ${c.potential}</p>
   </div></div>
   <div class="feature-stat-grid" style="margin-top:14px"><div class="feature-stat"><span class="small muted">Partidos</span><b>${c.matches}</b></div><div class="feature-stat"><span class="small muted">Goles</span><b>${c.goals}</b></div><div class="feature-stat"><span class="small muted">Asistencias</span><b>${c.assists}</b></div><div class="feature-stat"><span class="small muted">Títulos</span><b>${c.titles}</b></div><div class="feature-stat"><span class="small muted">Selección</span><b>${c.caps}</b></div><div class="feature-stat"><span class="small muted">Valor</span><b>€${(c.marketValue/1000000).toFixed(1)}M</b></div><div class="feature-stat"><span class="small muted">Forma</span><b>${c.form}/100</b></div><div class="feature-stat"><span class="small muted">Físico</span><b>${c.fitness}/100</b></div></div>
