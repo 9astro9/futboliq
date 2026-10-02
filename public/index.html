@@ -74,7 +74,7 @@ let mode="login", user=null, gameId=null, devOpen=false;
 let sound=localStorage.getItem("fql_sound")!=="off";
 let theme=localStorage.getItem("fql_theme")||"dark";
 let lang=localStorage.getItem("fql_lang")||"es";
-let widgetId=null;
+let widgetId=null, turnstileReady=false, turnstileConfig=null, turnstileRendering=false;
 const $=id=>document.getElementById(id);
 const T={
 es:{login:"Iniciar sesión",register:"Crear cuenta",account:"Cuenta",start:"Empezar partida",next:"Siguiente",finish:"Partida terminada",points:"Puntos",settings:"Configuración",soundOn:"Activado",soundOff:"Desactivado",dark:"Oscuro",light:"Claro"},
@@ -85,7 +85,17 @@ function tr(k){return (T[lang]||T.es)[k]||k}
 function applyPrefs(){document.documentElement.classList.toggle("light",theme==="light");$("soundBtn").textContent=sound?tr("soundOn"):tr("soundOff");$("themeBtn").textContent=theme==="dark"?tr("dark"):tr("light");$("lang").value=lang}
 function setLang(v){lang=v;localStorage.setItem("fql_lang",v);applyPrefs();if(gameId) refreshMe()}
 function toggleSound(){sound=!sound;localStorage.setItem("fql_sound",sound?"on":"off");applyPrefs();if(sound)beep(660)}
-function toggleTheme(){theme=theme==="dark"?"light":"dark";localStorage.setItem("fql_theme",theme);applyPrefs()}
+function toggleTheme(){
+  theme=theme==="dark"?"light":"dark";
+  localStorage.setItem("fql_theme",theme);
+  applyPrefs();
+  if(widgetId!==null){
+    removeTurnstile();
+    turnstileReady=false;
+    turnstileRendering=false;
+    renderTurnstile();
+  }
+}
 function beep(freq=520){if(!sound)return;try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;g.gain.value=.04;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.08)}catch{}}
 function openSettings(){$("settings").classList.toggle("hidden")}
 function api(path,options={}){return fetch(path,{credentials:"same-origin",headers:{"content-type":"application/json",...(options.headers||{})},...options}).then(async r=>{let x={};try{x=await r.json()}catch{};if(!r.ok)throw new Error(x.error||"Error");return x})}
@@ -100,37 +110,66 @@ function switchAuth(m){
   $("confirmWrap").classList.toggle("hidden",!registering);
   $("authHint").textContent=registering?"Usa un nombre único de 3 a 16 caracteres.":"Escribe tus datos y pulsa Entrar.";
   $("authMsg").textContent="";
-  resetTurnstile();
+  if(widgetId!==null)resetTurnstile();
+  else if(!turnstileRendering)renderTurnstile();
 }
-function resetTurnstile(){if(widgetId!==null && window.turnstile){try{turnstile.reset(widgetId)}catch{}}}
+function removeTurnstile(){
+  if(widgetId!==null && window.turnstile){
+    try{turnstile.remove(widgetId)}catch{}
+  }
+  widgetId=null;
+}
+function resetTurnstile(){
+  if(widgetId!==null && window.turnstile){
+    try{turnstile.reset(widgetId)}catch{removeTurnstile()}
+  }
+}
 let turnstileAttempts=0;
 function renderTurnstile(){
+  if(turnstileRendering)return;
+  turnstileRendering=true;
   api("/api/config").then(config=>{
+    turnstileConfig=config;
     if(!config.turnstileSiteKey){
       $("turnstileBox").innerHTML="<div class='small muted'>CAPTCHA no configurado todavía en Cloudflare.</div>";
       return;
     }
     window.__tsSiteKey=config.turnstileSiteKey;
     const tryRender=()=>{
-      if(widgetId!==null) return;
+      if(widgetId!==null || !turnstileConfig || turnstileRendering===false)return;
       if(window.turnstile){
         try{
-          widgetId=turnstile.render("#turnstileBox",{sitekey:config.turnstileSiteKey,theme:theme==="dark"?"dark":"light"});
+          $("turnstileBox").innerHTML="";
+          widgetId=turnstile.render($("turnstileBox"),{
+            sitekey:turnstileConfig.turnstileSiteKey,
+            theme:theme==="dark"?"dark":"light",
+            callback:()=>{turnstileReady=true},
+            "expired-callback":()=>{turnstileReady=false},
+            "error-callback":()=>{turnstileReady=false}
+          });
+          turnstileReady=false;
+          turnstileRendering=false;
         }catch(e){
-          $("turnstileBox").innerHTML="<div class='small muted'>No se pudo cargar el CAPTCHA. Comprueba que el dominio de este Worker esté autorizado en Turnstile.</div>";
+          turnstileRendering=false;
+          $("turnstileBox").innerHTML="<div class='small muted'>No se pudo cargar el CAPTCHA. Comprueba el dominio autorizado en Cloudflare Turnstile.</div>";
         }
       }else if(turnstileAttempts++<40){
         setTimeout(tryRender,250);
       }else{
+        turnstileRendering=false;
         $("turnstileBox").innerHTML="<div class='small muted'>El CAPTCHA no terminó de cargar. Recarga la página.</div>";
       }
     };
     tryRender();
   }).catch(()=>{
+    turnstileRendering=false;
     $("turnstileBox").innerHTML="<div class='small muted'>No se pudo conectar con la configuración del CAPTCHA.</div>";
   });
 }
-function tokenValue(){return window.turnstile && widgetId!==null ? turnstile.getResponse(widgetId):""}
+function tokenValue(){
+  if(!window.turnstile || widgetId===null || !turnstileReady)return "";
+  try{return turnstile.getResponse(widgetId)||""}catch{return ""}
+}
 async function submitAuth(){
   const username=$("username").value.trim();
   const password=$("password").value;
@@ -152,6 +191,7 @@ async function submitAuth(){
     loadRanking();
   }catch(e){
     $("authMsg").textContent=e.message;
+    turnstileReady=false;
     resetTurnstile();
   }finally{
     btn.disabled=false;
@@ -171,7 +211,10 @@ async function answer(i){
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
 async function loadRanking(){try{const x=await api("/api/ranking");$("ranking").innerHTML="<table><thead><tr><th>#</th><th>Jugador</th><th>Puntos</th><th>Partidas</th></tr></thead><tbody>"+x.ranking.map((r,i)=>"<tr><td>"+(i+1)+"</td><td>"+escapeHtml(r.username)+"</td><td>"+r.score+"</td><td>"+r.games+"</td></tr>").join("")+"</tbody></table>"}catch{}}
-async function logout(){await api("/api/logout",{method:"POST"});location.reload()}
+async function logout(){
+  try{await api("/api/logout",{method:"POST"})}
+  finally{location.reload()}
+}
 function accountUI(){if(!user)return;$("accountArea").innerHTML="<span class='muted' style='margin-right:8px'>"+escapeHtml(user.username)+"</span><button class='btn' onclick='logout()'>Salir</button>"}
 async function devConsole(){
   if(!user || user.role!=="admin"){alert("La consola requiere una cuenta administradora.");return}
