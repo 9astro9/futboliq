@@ -1,108 +1,65 @@
-# FUTBOLIQ — versión 100% gratuita para empezar
+# FUTBOLIQ
 
-Esta edición está preparada para Cloudflare Workers + Workers Static Assets + D1 + Turnstile.
+Quiz de fútbol con cuentas, ranking global, configuración y consola administrativa.
 
-## Coste
+## Arquitectura
 
-Para un proyecto pequeño/personal puedes empezar con $0/mes dentro de los límites del plan gratuito. Workers Free incluye 100.000 requests/día y D1 Free incluye 5 millones de filas leídas/día, 100.000 filas escritas/día y 5 GB de almacenamiento. Turnstile tiene plan gratuito. Revisa siempre los límites actuales antes de publicar a gran escala.
+- Cloudflare Workers: backend y API.
+- Workers Static Assets: interfaz.
+- Cloudflare D1: cuentas, sesiones, partidas, ranking y auditoría.
+- Cloudflare Turnstile: CAPTCHA.
 
-## 1. Instala Node.js
+## Despliegue
 
-Instala Node.js LTS en tu PC.
+1. Conecta este repositorio de GitHub a **Workers & Pages → Create application → Get started → Import a repository**.
+2. Importa `9astro9/futboliq`.
+3. El proyecto ya incluye `wrangler.toml` y la base D1.
+4. El comando de deploy ejecuta las migraciones y publica el Worker.
 
-## 2. Abre una terminal en esta carpeta
+## Secretos
 
-```bash
-npm install
-```
+Configura en el proyecto de Cloudflare:
 
-## 3. Inicia sesión en Cloudflare
+- `PASSWORD_PEPPER`
+- `ADMIN_USERNAME`
+- `DEV_PANEL_CODE`
+- `TURNSTILE_SECRET`
 
-```bash
-npx wrangler login
-```
+Y una variable pública:
 
-Se abrirá el navegador para autorizar tu cuenta.
+- `TURNSTILE_SITEKEY`
 
-## 4. Crea la base de datos gratuita
+Nunca subas estos valores a GitHub.
 
-```bash
-npx wrangler d1 create futboliq-db --use-remote
-```
+## Primer administrador
 
-Wrangler mostrará un `database_id`. Copia ese ID en `wrangler.toml`, sustituyendo:
+Antes de registrar tu cuenta, configura `ADMIN_USERNAME` con tu nombre de usuario. Esa cuenta se crea con rol `admin`.
 
-```text
-REEMPLAZAR_CON_EL_ID_DE_D1
-```
+## Consola de desarrollador
 
-## 5. Crea las tablas
+Pulsa **F**, luego **T**, luego **B**. El navegador pedirá el código de desarrollador y el servidor verificará que la cuenta tenga rol administrador.
 
-```bash
-npx wrangler d1 migrations apply futboliq-db --remote
-```
+Incluye:
 
-## 6. Configura secretos
+- ver todas las cuentas
+- sumar/restar puntos
+- fijar puntuación
+- bloquear/desbloquear
+- promover/quitar administradores
+- resetear estadísticas
+- estadísticas del servidor
+- registro de acciones administrativas
 
-No pongas secretos dentro de `index.html` ni `worker.js`.
+## Gratis
 
-```bash
-npx wrangler secret put DEV_PANEL_CODE
-npx wrangler secret put PASSWORD_PEPPER
-npx wrangler secret put ADMIN_USERNAME
-```
-
-Para Turnstile:
-
-```bash
-npx wrangler secret put TURNSTILE_SECRET
-```
-
-La clave pública se configura como variable no secreta en Wrangler o en el dashboard:
-
-```bash
-npx wrangler deploy --var TURNSTILE_SITEKEY:TU_SITEKEY
-```
-
-También puedes añadirla en el dashboard de Cloudflare.
-
-## 7. Publica
-
-```bash
-npm run deploy
-```
-
-Cloudflare te dará una dirección `workers.dev` para empezar. No hace falta comprar un dominio.
-
-## 8. Tu primera cuenta de desarrollador
-
-Pon como secreto:
-
-```text
-ADMIN_USERNAME=tu_usuario
-DEV_PANEL_CODE=un_codigo_nuevo
-```
-
-Luego registra esa cuenta. El servidor la crea con rol `admin`.
-
-En el juego:
-
-```text
-F → T → B
-```
-
-Después introduce el código de desarrollador.
+Puedes empezar con los planes gratuitos de Cloudflare dentro de sus límites actuales. Revisa los límites y precios actuales antes de crecer.
 
 ## Seguridad
 
-- Las contraseñas se derivan con PBKDF2-HMAC-SHA-256 y salt individual.
-- Las sesiones usan tokens aleatorios almacenados como hash en D1.
-- La puntuación y las respuestas correctas se calculan en el servidor.
-- El rol admin se comprueba en D1 en cada operación administrativa.
-- El código del panel no se envía al navegador.
-- Turnstile se verifica en el servidor.
-- Nunca guardes contraseñas en texto plano ni subas secretos a GitHub.
-
-## Sobre el coste
-
-El plan gratuito tiene límites diarios. D1 deja de aceptar consultas cuando alcanzas sus límites del día; no te convierte automáticamente en un cobro si estás en el plan Free. Para un juego pequeño es una buena forma de empezar y aprender.
+- El servidor calcula la puntuación.
+- Las respuestas correctas no se envían al navegador.
+- Las sesiones se almacenan como hashes.
+- Las contraseñas usan PBKDF2-HMAC-SHA-256 con salt individual.
+- El código de desarrollador vive solo como secreto del servidor.
+- Turnstile se valida en el servidor.
+- Se comprueba el origen de las operaciones de escritura.
