@@ -393,7 +393,7 @@ async function refreshMe(){
   }catch{}
 }
 async function logout(){try{await api("/api/logout",{method:"POST"})}finally{location.reload()}}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",""":"&quot;","'":"&#039;"}[m]))}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
 
 async function devConsole(){
   if(!user||user.role!=="admin"){alert("La consola requiere una cuenta administradora.");return}
