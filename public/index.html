@@ -340,6 +340,17 @@ function nameHtml(name,colorId,owner){
   const style=c.gradient?"--name-gradient:"+c.gradient:"color:"+(c.color||"#f5f7fb");
   return "<span class='"+(c.gradient?"name-gradient":"name-solid")+"' style='"+style+"'>"+escapeHtml(name)+"</span>";
 }
+const CATEGORY_INFO={
+  "Mundiales":["🌎","#60a5fa"],"Balón de Oro":["🏅","#f6c453"],"Balón de Oro del Mundial":["🏆","#f59e0b"],
+  "Bota de Oro":["👟","#fb7185"],"Copa América":["🌎","#35d399"],"Copa Libertadores":["🏆","#a78bfa"],
+  "Eurocopa":["🇪🇺","#67e8f9"],"Champions":["⭐","#c084fc"],"Leyendas":["👑","#f97316"],
+  "Hat-tricks":["⚡","#ef4444"],"Reglas":["📋","#94a3b8"],"Blassvec":["🧠","#35d399"]
+};
+function categoryBadge(cat){
+  const info=CATEGORY_INFO[cat]||["⚽","#35d399"];
+  const cls="question-category cat-"+String(cat||"general").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9]+/g,"-").toLowerCase();
+  return "<span class='"+cls+"' style='--cat-color:"+info[1]+"'>"+info[0]+" "+escapeHtml(cat||"Fútbol")+"</span>";
+}
 function rankHtml(rankId){
   const r=RANKS[rankId]||RANKS.novato;
   return "<span class='rank-badge "+r.cls+"'>"+r.icon+" "+escapeHtml(r.name)+(r.vip?" · x2":"")+"</span>";
@@ -593,7 +604,7 @@ async function startGame(){
   }catch(e){alert(e.message)}
 }
 function showQuestion(q){
-  $("gameArea").innerHTML="<div class='small muted'>"+escapeHtml(q.category)+"</div><h1 class='question'>"+escapeHtml(q.q)+"</h1><div class='options'>"+q.options.map((o,i)=>"<button class='btn option' onclick='answer("+i+")'>"+escapeHtml(o)+"</button>").join("")+"</div>";
+  $("gameArea").innerHTML=categoryBadge(q.category)+"<h1 class='question'>"+escapeHtml(q.q)+"</h1><div class='options'>"+q.options.map((o,i)=>"<button class='btn option' onclick='answer("+i+")'>"+escapeHtml(o)+"</button>").join("")+"</div>";
 }
 async function answer(i){
   document.querySelectorAll(".option").forEach(b=>b.disabled=true);
