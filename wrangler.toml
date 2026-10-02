@@ -1,0 +1,12 @@
+name = "futboliq"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[assets]
+directory = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "futboliq-db"
+database_id = "REEMPLAZAR_CON_EL_ID_DE_D1"
+migrations_dir = "migrations"
