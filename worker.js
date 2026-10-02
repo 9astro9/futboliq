@@ -127,6 +127,7 @@ async function ensureDatabase(env) {
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_styles_user ON user_styles(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_name_colors_user ON user_name_colors(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id,read_at)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_broadcast_created ON broadcast_messages(created_at)")
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_daily_gifts_date ON daily_gifts(claim_date)"),
       env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_nocase ON users(username COLLATE NOCASE)")
     ]);
@@ -495,6 +496,14 @@ async function api(req,env) {
     }
   }
 
+  if(path==="/api/broadcast" && req.method==="GET") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    const after=Math.max(0,Number(url.searchParams.get("after")||0));
+    const rows=await env.DB.prepare("SELECT id,sender_username AS sender,message,created_at AS createdAt FROM broadcast_messages WHERE id>? ORDER BY id ASC LIMIT 20").bind(Number.isSafeInteger(after)?after:0).all();
+    return json({messages:rows.results||[]});
+  }
+
   if(path==="/api/ranking" && req.method==="GET") {
     const rows=await env.DB.prepare("SELECT username,best_score AS score,games,profile_style AS profileStyle,beta_tester AS betaTester,name_color AS nameColor FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, games DESC, id ASC LIMIT 100").all();
     const ranking=(rows.results||[]).map(r=>({...r,betaTester:!!r.betaTester,owner:isOwnerName(r.username,env)}));
@@ -596,6 +605,21 @@ async function api(req,env) {
     const admin=await requireUser(req,env,true);
     const ds=await devSession(req,env);
     if(!admin || !ds) return json({error:"Sesión de desarrollador no autorizada."},403);
+
+    if(path==="/api/dev/broadcast" && req.method==="POST") {
+      const admin=await requireUser(req,env,true);
+      const ds=await devSession(req,env);
+      if(!admin || !ds) return json({error:"Sesión de desarrollador no autorizada."},403);
+      let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+      const message=String(x.message||"").trim();
+      if(!message) return json({error:"Escribe un mensaje."},400);
+      if(message.length>500) return json({error:"El mensaje no puede superar 500 caracteres."},400);
+      const now=Date.now();
+      const result=await env.DB.prepare("INSERT INTO broadcast_messages(sender_user_id,sender_username,message,created_at) VALUES(?,?,?,?)").bind(admin.id,admin.username,message,now).run();
+      const id=result.meta?.last_row_id;
+      await log(env,admin.id,"global_broadcast",null,{message});
+      return json({ok:true,message:{id,sender:admin.username,message,createdAt:now}});
+    }
 
     if(path==="/api/dev/users" && req.method==="GET") {
       const rows=await env.DB.prepare("SELECT id,username,role,status,best_score AS bestScore,games,coins,profile_style AS profileStyle,beta_tester AS betaTester,name_color AS nameColor,created_at AS createdAt FROM users ORDER BY id DESC").all();
