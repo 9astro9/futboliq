@@ -232,6 +232,8 @@ async function api(req,env) {
     if(candidate!==row.password_hash) {
       const legacy=await passwordHash(password,row.salt,pepper,310000);
       if(legacy!==row.password_hash) return json({error:"Usuario o contraseña incorrectos."},401);
+      await env.DB.prepare("UPDATE users SET password_hash=?,updated_at=? WHERE id=?")
+        .bind(candidate,Date.now(),row.id).run();
     }
 
     const session=token();
