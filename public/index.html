@@ -111,6 +111,9 @@ th{color:var(--muted);font-weight:650}
 .style-mundial .profile-banner,.style-mundial .style-preview{background:linear-gradient(135deg,#063b2f,#168a5c,#f6c453)}
 .style-mundial .profile-avatar{background:#0d392e;color:#88f0be}
 .style-mundial .profile-style{background:rgba(22,138,92,.15);color:#63dfaa}
+.owner-name{font-weight:950;letter-spacing:.01em;text-shadow:0 0 10px rgba(53,211,154,.75),0 0 22px rgba(53,211,154,.4)}
+.badge-owner{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:linear-gradient(90deg,#35d39a,#7ff0bf);color:#06130e;font-size:11px;font-weight:950;margin-left:6px}
+.badge-beta{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:linear-gradient(90deg,#f6c453,#fff0a6);color:#281b03;font-size:11px;font-weight:950;margin-left:6px}
 .footer{padding:28px 0;color:var(--muted);font-size:13px;text-align:center}
 @media(max-width:900px){.menu-grid{grid-template-columns:repeat(2,1fr)}.shop-grid{grid-template-columns:repeat(2,1fr)}.profile-layout{grid-template-columns:1fr}}
 @media(max-width:620px){.wrap{padding:14px}.menu-grid,.diff-grid,.shop-grid{grid-template-columns:1fr}.hero{padding:22px}.hero h1{font-size:31px}.question{font-size:25px}.profile-stats{grid-template-columns:1fr}.actions{width:100%}}
@@ -297,8 +300,10 @@ async function submitAuth(){
 }
 function accountUI(){
   if(!user)return;
-  const st=STYLES[user.profileStyle]||STYLES.clasico;
-  $("accountArea").innerHTML="<span class='small muted'>"+escapeHtml(user.username)+" · 🪙 "+Number(user.coins||0).toLocaleString("es-ES")+"</span><button class='btn' onclick='logout()'>Salir</button>";
+  const ownerBadge=user.owner?"<span class='badge-owner'>OWNER</span>":"";
+  const betaBadge=user.betaTester?"<span class='badge-beta'>BETA TESTER</span>":"";
+  const nameClass=user.owner?"owner-name":"";
+  $("accountArea").innerHTML="<span class='small muted "+nameClass+"'>"+escapeHtml(user.username)+ownerBadge+betaBadge+" · 🪙 "+Number(user.coins||0).toLocaleString("es-ES")+"</span><button class='btn' onclick='logout()'>Salir</button>";
 }
 function updateHome(){
   if(!user)return;
@@ -382,7 +387,7 @@ async function loadRanking(){
   try{
     const x=await api("/api/ranking");
     $("rankingContent").innerHTML="<table><thead><tr><th>#</th><th>Jugador</th><th>Puntos</th><th>Partidas</th><th>Estilo</th></tr></thead><tbody>"+
-      (x.ranking||[]).map((r,i)=>{const st=STYLES[r.profileStyle]||STYLES.clasico;const me=user&&r.username===user.username;return "<tr class='"+(me?"rank-me":"")+"'><td class='rank-num'>"+(i+1)+"</td><td>"+escapeHtml(r.username)+(me?" <strong>← vos</strong>":"")+"</td><td>"+Number(r.score||0).toLocaleString("es-ES")+"</td><td>"+Number(r.games||0).toLocaleString("es-ES")+"</td><td>"+st.icon+" "+st.name+"</td></tr>"}).join("")+
+      (x.ranking||[]).map((r,i)=>{const st=STYLES[r.profileStyle]||STYLES.clasico;const me=user&&r.username===user.username;return "<tr class='"+(me?"rank-me":"")+"'><td class='rank-num'>"+(i+1)+"</td><td><span class='"+(r.owner?"owner-name":"")+"'>"+escapeHtml(r.username)+"</span>"+(r.owner?"<span class='badge-owner'>OWNER</span>":"")+(r.betaTester?"<span class='badge-beta'>BETA</span>":"")+(me?" <strong>← vos</strong>":"")+"</td><td>"+Number(r.score||0).toLocaleString("es-ES")+"</td><td>"+Number(r.games||0).toLocaleString("es-ES")+"</td><td>"+st.icon+" "+st.name+"</td></tr>"}).join("")+
       "</tbody></table>";
   }catch(e){$("rankingContent").innerHTML="<p class='muted'>"+escapeHtml(e.message)+"</p>"}
 }
@@ -403,17 +408,48 @@ async function devConsole(){
 }
 async function loadDev(){
   const [u,s,a]=await Promise.all([api("/api/dev/users"),api("/api/dev/stats"),api("/api/dev/audit")]);
-  $("devStats").innerHTML="<span>Usuarios: <strong>"+s.users+"</strong></span><span>Partidas activas: <strong>"+s.activeGames+"</strong></span><span>Sesiones: <strong>"+s.activeSessions+"</strong></span>";
-  const rows=(u.users||[]).map(r=>"<tr><td>"+escapeHtml(r.username)+"</td><td>"+escapeHtml(r.role)+"</td><td>"+escapeHtml(r.status)+"</td><td>"+r.bestScore+"</td><td>"+r.games+"</td><td>"+r.coins+"</td><td>"+escapeHtml(r.profileStyle||"clasico")+"</td><td><button class='btn dev-score' data-id='"+r.id+"' data-delta='100'>+100</button><button class='btn dev-score' data-id='"+r.id+"' data-delta='-100'>-100</button><button class='btn dev-set' data-id='"+r.id+"'>Fijar</button><button class='btn dev-action' data-id='"+r.id+"' data-action='"+(r.status==="active"?"block":"unblock")+"'>"+(r.status==="active"?"Bloquear":"Desbloquear")+"</button><button class='btn danger dev-action' data-id='"+r.id+"' data-action='reset'>Reset</button></td></tr>").join("");
+  const viewerOwner=!!u.viewerOwner;
+  $("devStats").innerHTML="<span>Usuarios: <strong>"+s.users+"</strong></span><span>Partidas activas: <strong>"+s.activeGames+"</strong></span><span>Sesiones: <strong>"+s.activeSessions+"</strong></span>"+(viewerOwner?"<span class='badge-owner'>OWNER</span>":"");
+  const rows=(u.users||[]).map(r=>{
+    const owner=r.owner?"<span class='badge-owner'>OWNER</span>":"";
+    const beta=r.betaTester?"<span class='badge-beta'>BETA TESTER</span>":"";
+    return "<tr><td><span class='"+(r.owner?"owner-name":"")+"'>"+escapeHtml(r.username)+"</span>"+owner+beta+"</td>"+
+      "<td>"+escapeHtml(r.role)+"</td><td>"+escapeHtml(r.status)+"</td><td>"+r.bestScore+"</td><td>"+r.games+"</td><td>"+Number(r.coins||0).toLocaleString("es-ES")+"</td><td>"+escapeHtml(r.profileStyle||"clasico")+"</td>"+
+      "<td>"+
+      "<button class='btn dev-score' data-id='"+r.id+"' data-delta='100'>+100 pts</button>"+
+      "<button class='btn dev-score' data-id='"+r.id+"' data-delta='-100'>−100 pts</button>"+
+      "<button class='btn dev-set' data-id='"+r.id+"'>Fijar pts</button>"+
+      (viewerOwner?"<button class='btn gold dev-coins' data-id='"+r.id+"' data-delta='1000'>+1000 🪙</button>":"")+
+      (viewerOwner?"<button class='btn gold dev-coins' data-id='"+r.id+"' data-delta='-1000'>−1000 🪙</button>":"")+
+      (viewerOwner&&!r.owner?"<button class='btn dev-beta' data-id='"+r.id+"' data-enabled='"+(!r.betaTester)+"'>"+(r.betaTester?"Quitar BETA":"Dar BETA TESTER")+"</button>":"")+
+      "<button class='btn dev-action' data-id='"+r.id+"' data-action='"+(r.status==="active"?"block":"unblock")+"'>"+(r.status==="active"?"Bloquear":"Desbloquear")+"</button>"+
+      "<button class='btn danger dev-action' data-id='"+r.id+"' data-action='reset'>Reset</button>"+
+      "</td></tr>";
+  }).join("");
   $("devUsers").innerHTML="<table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Puntos</th><th>Partidas</th><th>Monedas</th><th>Estilo</th><th>Acciones</th></tr></thead><tbody>"+rows+"</tbody></table>";
   document.querySelectorAll(".dev-score").forEach(b=>b.onclick=()=>devScore(Number(b.dataset.id),Number(b.dataset.delta)));
   document.querySelectorAll(".dev-set").forEach(b=>b.onclick=()=>devSet(Number(b.dataset.id)));
+  document.querySelectorAll(".dev-coins").forEach(b=>b.onclick=()=>devCoins(Number(b.dataset.id),Number(b.dataset.delta)));
+  document.querySelectorAll(".dev-beta").forEach(b=>b.onclick=()=>devBeta(Number(b.dataset.id),b.dataset.enabled==="true"));
   document.querySelectorAll(".dev-action").forEach(b=>b.onclick=()=>devAction(Number(b.dataset.id),b.dataset.action));
   $("devAudit").innerHTML="<h3>Registro</h3><table><thead><tr><th>Fecha</th><th>Admin</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>"+(a.logs||[]).map(l=>"<tr><td>"+new Date(l.createdAt).toLocaleString()+"</td><td>"+escapeHtml(l.actor||"—")+"</td><td>"+escapeHtml(l.action||"")+"</td><td>"+escapeHtml(l.details||"")+"</td></tr>").join("")+"</tbody></table>";
 }
-async function devScore(id,delta){if(!confirm((delta>0?"+":"")+delta+" puntos?"))return;try{await api("/api/dev/users/"+id+"/score",{method:"POST",body:JSON.stringify({delta})});await loadDev();await loadRanking()}catch(e){alert(e.message)}}
-async function devSet(id){const score=prompt("Nueva puntuación:");if(score===null)return;try{await api("/api/dev/users/"+id+"/set-score",{method:"POST",body:JSON.stringify({score:Number(score)})});await loadDev();await loadRanking()}catch(e){alert(e.message)}}
-async function devAction(id,action){if(!confirm("¿Confirmar "+action+"?"))return;try{await api("/api/dev/users/"+id+"/"+action,{method:"POST",body:"{}"});await loadDev();await loadRanking()}catch(e){alert(e.message)}}
+async function devScore(id,delta){
+  if(!confirm((delta>0?"+":"")+delta+" puntos?"))return;
+  try{await api("/api/dev/users/"+id+"/score",{method:"POST",body:JSON.stringify({delta})});await loadDev();await loadRanking()}catch(e){alert(e.message)}
+}
+async function devSet(id){
+  const score=prompt("Nueva puntuación:");if(score===null)return;
+  try{await api("/api/dev/users/"+id+"/set-score",{method:"POST",body:JSON.stringify({score:Number(score)})});await loadDev();await loadRanking()}catch(e){alert(e.message)}
+}
+async function devCoins(id,delta){
+  if(!confirm((delta>0?"+":"")+delta+" monedas?"))return;
+  try{const x=await api("/api/dev/users/"+id+"/coins",{method:"POST",body:JSON.stringify({delta})});if(user&&user.id===id){user.coins=x.coins;updateHome()}await loadDev();await loadRanking()}catch(e){alert(e.message)}
+}
+async function devBeta(id,enabled){
+  if(!confirm(enabled?"¿Dar BETA TESTER y +10.000 monedas?":"¿Quitar BETA TESTER?"))return;
+  try{await api("/api/dev/users/"+id+"/beta-tester",{method:"POST",body:JSON.stringify({enabled})});await loadDev();await loadRanking()}catch(e){alert(e.message)}
+}
 async function closeDev(){await api("/api/dev/close",{method:"POST",body:"{}"});$("devPanel").classList.add("hidden")}
 
 let seq="",seqTimer=0;
