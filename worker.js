@@ -953,7 +953,7 @@ async function api(req,env) {
     if(!Number.isInteger(choice)||choice<0||choice>=opts.length)return json({error:"Respuesta inválida."},400);
     const correct=choice===Number(live.correct_index),now=Date.now();
     await env.DB.prepare("INSERT INTO live_answers(live_id,user_id,choice,correct,answered_at) VALUES(?,?,?,?,?)").bind(live.id,u.id,choice,correct?1:0,now).run();
-    const boost=await getRewardMultiplier(env);
+    const boost=await getRewardMultiplier(env,u.id);
 if(correct)await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(25*boost,now,u.id).run();
     await updateAnswerStats(env,u.id,correct,correct?25:0);
     const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
@@ -1081,7 +1081,7 @@ if(correct)await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHE
       else if(Number(fresh.opponent_score)>Number(fresh.challenger_score))winner=Number(fresh.opponent_id);
       await env.DB.prepare("UPDATE duels SET status='completed' WHERE id=?").bind(d.id).run();
       if(winner){
-        const boost=await getRewardMultiplier(env);
+        const boost=await getRewardMultiplier(env,winner);
 await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(100*boost,now,winner).run();
         await env.DB.prepare("UPDATE user_stats SET wins=wins+1,updated_at=? WHERE user_id=?").bind(now,winner).run();
         const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(winner).first();
