@@ -448,7 +448,7 @@ async function loadDailyGift(){
     const x=await api("/api/daily-gift");
     if(x.multiplier!==undefined&&typeof updateWeekendUIWithMultiplier==="function")updateWeekendUIWithMultiplier(x.multiplier);
     const btn=$("dailyGiftBtn"),status=$("giftStatus"),box=$("dailyGiftBox");
-    if(x.claimed){btn.textContent="✅ Ya reclamado";btn.disabled=true;box.classList.add("gift-claimed");status.textContent="Ya cobraste las 150 monedas de hoy. Volvé mañana."}
+    if(x.claimed){btn.textContent="✅ Ya reclamado";btn.disabled=true;box.classList.add("gift-claimed");status.textContent="Ya cobraste "+Number(x.amount||Math.round(150*Number(x.multiplier||1))).toLocaleString("es-ES")+" monedas de hoy. Volvé mañana."}
     else{const boost=Number(x.multiplier||1);btn.disabled=false;box.classList.remove("gift-claimed");btn.textContent="🎁 Reclamar +"+Math.round(150*boost);status.textContent=boost!==1?"Reclamá tus "+Math.round(150*boost)+" monedas de hoy por el multiplicador x"+boost+".":"Reclamá tus 150 monedas de hoy."}
     if(x.coins!==undefined){user.coins=x.coins;updateHome()}
   }catch{if($("giftStatus"))$("giftStatus").textContent="No se pudo comprobar el regalo diario."}
