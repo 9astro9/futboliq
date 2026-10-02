@@ -695,7 +695,7 @@ async function api(req,env) {
     const inserted=await env.DB.prepare("INSERT OR IGNORE INTO daily_gifts(user_id,claim_date,claimed_at) VALUES(?,?,?)").bind(u.id,claimDate,Date.now()).run();
     if(!inserted.meta?.changes) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate},409);
     try {
-      const boost=weekendMultiplier();
+      const boost=await getRewardMultiplier(env);
       const amount=150*boost;
       await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(amount,Date.now(),u.id).run();
       const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
@@ -824,7 +824,7 @@ async function api(req,env) {
       const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(u.id).first();
       const yesterday=new Date(Date.parse(date+"T00:00:00Z")-86400000).toISOString().slice(0,10);
       const dailyStreak=s?.daily_last_date===yesterday?Number(s.daily_streak||0)+1:1;
-      const bestDaily=Math.max(Number(s?.best_daily_streak||0),dailyStreak),wk=weekKey(),boost=weekendMultiplier(),xp=Number(s?.xp||0)+(correct?50:10)*boost;
+      const bestDaily=Math.max(Number(s?.best_daily_streak||0),dailyStreak),wk=weekKey(),boost=await getRewardMultiplier(env),xp=Number(s?.xp||0)+(correct?50:10)*boost;
       await env.DB.prepare("UPDATE user_stats SET xp=?,daily_streak=?,best_daily_streak=?,daily_last_date=?,weekly_score=?,weekly_key=?,updated_at=? WHERE user_id=?")
         .bind(xp,dailyStreak,bestDaily,date,s?.weekly_key===wk?Number(s?.weekly_score||0):0,wk,now,u.id).run();
       await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(100*boost,now,u.id).run();
@@ -876,7 +876,7 @@ async function api(req,env) {
     if(!Number.isInteger(choice)||choice<0||choice>=opts.length)return json({error:"Respuesta inválida."},400);
     const correct=choice===Number(live.correct_index),now=Date.now();
     await env.DB.prepare("INSERT INTO live_answers(live_id,user_id,choice,correct,answered_at) VALUES(?,?,?,?,?)").bind(live.id,u.id,choice,correct?1:0,now).run();
-    const boost=weekendMultiplier();
+    const boost=await getRewardMultiplier(env);
 if(correct)await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(25*boost,now,u.id).run();
     await updateAnswerStats(env,u.id,correct,correct?25:0);
     const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
@@ -1004,7 +1004,7 @@ if(correct)await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHE
       else if(Number(fresh.opponent_score)>Number(fresh.challenger_score))winner=Number(fresh.opponent_id);
       await env.DB.prepare("UPDATE duels SET status='completed' WHERE id=?").bind(d.id).run();
       if(winner){
-        const boost=weekendMultiplier();
+        const boost=await getRewardMultiplier(env);
 await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(100*boost,now,winner).run();
         await env.DB.prepare("UPDATE user_stats SET wins=wins+1,updated_at=? WHERE user_id=?").bind(now,winner).run();
         const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(winner).first();
