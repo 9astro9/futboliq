@@ -1243,6 +1243,14 @@ async function api(req,env) {
         if(!target) return json({error:"Cuenta no encontrada."},404);
         if(isOwnerName(target.username,env)) return json({error:"El Owner no puede ser borrado."},403);
         await log(env,admin.id,"account_delete",id,{username:target.username});
+        await Promise.all([
+          env.DB.prepare("DELETE FROM achievements WHERE user_id=?").bind(id).run().catch(()=>{}),
+          env.DB.prepare("DELETE FROM daily_progress WHERE user_id=?").bind(id).run().catch(()=>{}),
+          env.DB.prepare("DELETE FROM user_stats WHERE user_id=?").bind(id).run().catch(()=>{}),
+          env.DB.prepare("DELETE FROM live_answers WHERE user_id=?").bind(id).run().catch(()=>{}),
+          env.DB.prepare("DELETE FROM friends WHERE user_id=? OR friend_id=?").bind(id,id).run().catch(()=>{}),
+          env.DB.prepare("DELETE FROM duels WHERE challenger_id=? OR opponent_id=?").bind(id,id).run().catch(()=>{})
+        ]);
         await env.DB.batch([
           env.DB.prepare("DELETE FROM games WHERE user_id=?").bind(id),
           env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(id),
