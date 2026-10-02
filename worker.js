@@ -278,6 +278,15 @@ function weekKey(date=new Date()){
   return y+"-W"+String(week).padStart(2,"0");
 }
 
+function weekendMultiplier(){
+  try{
+    const day=new Intl.DateTimeFormat("en-US",{timeZone:"America/Montevideo",weekday:"short"}).format(new Date());
+    return (day==="Sat"||day==="Sun")?3:1;
+  }catch{
+    const day=new Date().getUTCDay();
+    return (day===0||day===6)?3:1;
+  }
+}
 function levelFromXp(xp){return Math.max(1,Math.floor(Math.sqrt(Math.max(0,Number(xp||0))/100))+1)}
 function dailyQuestionIds(date){
   const pool=QUESTION_SETS.dificil||[];
@@ -301,7 +310,7 @@ async function updateAnswerStats(env,userId,correct,points){
     await ensureUserStats(env,userId);
     const row=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(userId).first();
     const now=Date.now(),wk=weekKey();
-    const xpGain=correct?Math.max(5,Math.floor(Number(points||0)/10)):1;
+    const boost=weekendMultiplier();\n    const xpGain=(correct?Math.max(5,Math.floor(Number(points||0)/10)):1)*boost;
     const streak=correct?(Number(row?.current_streak||0)+1):0;
     const best=Math.max(Number(row?.best_streak||0),streak);
     const weekly=(row?.weekly_key===wk?Number(row?.weekly_score||0):0)+(correct?Number(points||0):0);
@@ -788,14 +797,14 @@ async function api(req,env) {
       const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(u.id).first();
       const yesterday=new Date(Date.parse(date+"T00:00:00Z")-86400000).toISOString().slice(0,10);
       const dailyStreak=s?.daily_last_date===yesterday?Number(s.daily_streak||0)+1:1;
-      const bestDaily=Math.max(Number(s?.best_daily_streak||0),dailyStreak),wk=weekKey(),xp=Number(s?.xp||0)+(correct?50:10);
+      const bestDaily=Math.max(Number(s?.best_daily_streak||0),dailyStreak),wk=weekKey(),boost=weekendMultiplier(),xp=Number(s?.xp||0)+(correct?50:10)*boost;
       await env.DB.prepare("UPDATE user_stats SET xp=?,daily_streak=?,best_daily_streak=?,daily_last_date=?,weekly_score=?,weekly_key=?,updated_at=? WHERE user_id=?")
         .bind(xp,dailyStreak,bestDaily,date,s?.weekly_key===wk?Number(s?.weekly_score||0):0,wk,now,u.id).run();
-      await env.DB.prepare("UPDATE users SET coins=coins+100,updated_at=? WHERE id=?").bind(now,u.id).run();
+      await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(100*boost,now,u.id).run();
       const after=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(u.id).first();
       await maybeUnlockAchievements(env,u.id,after);
       const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
-      return json({correct,points,score,done:true,coins:fresh?.coins??0,dailyStreak,bestDailyStreak:bestDaily,level:levelFromXp(xp)});
+      return json({correct,points,score,done:true,coins:fresh?.coins??0,dailyStreak,bestDailyStreak:bestDaily,level:levelFromXp(xp),weekendMultiplier:boost});
     }
     await env.DB.prepare("UPDATE daily_progress SET idx=?,score=?,updated_at=? WHERE user_id=? AND challenge_date=? AND completed=0").bind(next,score,now,u.id,date).run();
     const nq=QUESTIONS[ids[next]];
@@ -840,10 +849,10 @@ async function api(req,env) {
     if(!Number.isInteger(choice)||choice<0||choice>=opts.length)return json({error:"Respuesta inválida."},400);
     const correct=choice===Number(live.correct_index),now=Date.now();
     await env.DB.prepare("INSERT INTO live_answers(live_id,user_id,choice,correct,answered_at) VALUES(?,?,?,?,?)").bind(live.id,u.id,choice,correct?1:0,now).run();
-    if(correct)await env.DB.prepare("UPDATE users SET coins=coins+25,updated_at=? WHERE id=?").bind(now,u.id).run();
+    const boost=weekendMultiplier();\n    if(correct)await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(25*boost,now,u.id).run();
     await updateAnswerStats(env,u.id,correct,correct?25:0);
     const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
-    return json({ok:true,correct,reward:correct?25:0,coins:fresh?.coins??u.coins});
+    return json({ok:true,correct,reward:correct?25*boost:0,coins:fresh?.coins??u.coins,weekendMultiplier:boost});
   }
 
   if(path.startsWith("/api/friends")) {
@@ -967,13 +976,13 @@ async function api(req,env) {
       else if(Number(fresh.opponent_score)>Number(fresh.challenger_score))winner=Number(fresh.opponent_id);
       await env.DB.prepare("UPDATE duels SET status='completed' WHERE id=?").bind(d.id).run();
       if(winner){
-        await env.DB.prepare("UPDATE users SET coins=coins+100,updated_at=? WHERE id=?").bind(now,winner).run();
+        const boost=weekendMultiplier();\n        await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(100*boost,now,winner).run();
         await env.DB.prepare("UPDATE user_stats SET wins=wins+1,updated_at=? WHERE user_id=?").bind(now,winner).run();
         const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(winner).first();
         await maybeUnlockAchievements(env,winner,s);
         const loser=winner===Number(fresh.challenger_id)?Number(fresh.opponent_id):Number(fresh.challenger_id);
         await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(loser,"duel_result","⚔️ El duelo terminó. Ganó "+(winner===Number(fresh.challenger_id)?fresh.challenger:fresh.opponent)+".",now).run().catch(()=>{});
-        await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(winner,"duel_result","🏆 Ganaste el duelo y recibiste 100 monedas.",now).run().catch(()=>{});
+        await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(winner,"duel_result","🏆 Ganaste el duelo y recibiste "+(100*weekendMultiplier())+" monedas.",now).run().catch(()=>{});
       }
       return json({correct,done:true,challengerScore:fresh.challenger_score,opponentScore:fresh.opponent_score,winner});
     }
@@ -1035,8 +1044,10 @@ async function api(req,env) {
 
     if(correct) {
       const bonus=next>=ids.length?50:0;
-      await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(coinGain+bonus,Date.now(),u.id).run();
-      totalCoins=(u.coins||0)+coinGain+bonus;
+      const rewardMultiplier=weekendMultiplier();
+      const awardedCoins=(coinGain+bonus)*rewardMultiplier;
+      await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(awardedCoins,Date.now(),u.id).run();
+      totalCoins=(u.coins||0)+awardedCoins;
     }
 
     if(next>=ids.length) {
