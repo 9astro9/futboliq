@@ -9,27 +9,37 @@ const DIFFICULTY_META = {
 
 const STYLES = [
   {id:"clasico",name:"Clásico",price:0,icon:"⚽",desc:"El estilo original de FUTBOLIQ."},
-  {id:"neon",name:"Neón",price:2500,icon:"⚡",desc:"Perfil brillante con estética futurista."},
-  {id:"fuego",name:"Fuego",price:5000,icon:"🔥",desc:"Un perfil intenso para competir."},
-  {id:"hielo",name:"Hielo",price:5000,icon:"❄️",desc:"Estilo frío y elegante."},
-  {id:"oro",name:"Oro",price:9000,icon:"👑",desc:"Perfil dorado para coleccionistas."},
-  {id:"carbono",name:"Carbono",price:12000,icon:"🖤",desc:"Estilo oscuro de alto nivel."},
-  {id:"retro",name:"Retro",price:7500,icon:"📼",desc:"Inspirado en el fútbol clásico."},
-  {id:"cosmico",name:"Cósmico",price:15000,icon:"🌌",desc:"Un perfil con estilo espacial."},
-  {id:"mundial",name:"Mundial",price:22000,icon:"🏆",desc:"Para quienes viven el fútbol."}
+  {id:"neon",name:"Neón",price:5000,icon:"⚡",desc:"Perfil brillante con estética futurista."},
+  {id:"fuego",name:"Fuego",price:10000,icon:"🔥",desc:"Un perfil intenso para competir."},
+  {id:"hielo",name:"Hielo",price:10000,icon:"❄️",desc:"Estilo frío y elegante."},
+  {id:"oro",name:"Oro",price:20000,icon:"👑",desc:"Perfil dorado para coleccionistas."},
+  {id:"carbono",name:"Carbono",price:30000,icon:"🖤",desc:"Estilo oscuro de alto nivel."},
+  {id:"retro",name:"Retro",price:15000,icon:"📼",desc:"Inspirado en el fútbol clásico."},
+  {id:"cosmico",name:"Cósmico",price:45000,icon:"🌌",desc:"Un perfil con estilo espacial."},
+  {id:"mundial",name:"Mundial",price:75000,icon:"🏆",desc:"Para quienes viven el fútbol."}
 ];
 
 const STYLE_BY_ID = new Map(STYLES.map(s=>[s.id,s]));
+const RANKS = [
+  {id:"novato",name:"Novato",price:0,icon:"⚽",desc:"Rango inicial. Solo estético.",css:"novato",multiplier:1},
+  {id:"amateur",name:"Amateur",price:7500,icon:"🥉",desc:"Rango estético para empezar a escalar.",css:"amateur",multiplier:1},
+  {id:"profesional",name:"Profesional",price:25000,icon:"🥈",desc:"Rango estético para jugadores serios.",css:"profesional",multiplier:1},
+  {id:"elite",name:"Élite",price:75000,icon:"🥇",desc:"Rango estético de alto nivel.",css:"elite",multiplier:1},
+  {id:"leyenda",name:"Leyenda",price:200000,icon:"🏆",desc:"Rango estético para verdaderas leyendas.",css:"leyenda",multiplier:1},
+  {id:"idolo",name:"Ídolo",price:600000,icon:"👑",desc:"Rango estético de colección.",css:"idolo",multiplier:1},
+  {id:"vip",name:"VIP",price:2500000,icon:"💎",desc:"Rango premium: x2 EXP y x2 monedas en todas las recompensas.",css:"vip",multiplier:2,vip:true}
+];
+const RANK_BY_ID = new Map(RANKS.map(r=>[r.id,r]));
 const NAME_COLORS = [
   {id:"blanco",name:"Blanco",price:0,color:"#f5f7fb",desc:"El color original de FUTBOLIQ."},
-  {id:"azul",name:"Azul",price:700,color:"#60a5fa",desc:"Azul eléctrico para tu nombre."},
-  {id:"rojo",name:"Rojo",price:900,color:"#fb7185",desc:"Un nombre que resalta."},
-  {id:"verde",name:"Verde",price:1200,color:"#35d399",desc:"Tono verde FUTBOLIQ."},
-  {id:"violeta",name:"Violeta",price:1600,color:"#c084fc",desc:"Violeta brillante."},
-  {id:"celeste",name:"Celeste",price:1900,color:"#67e8f9",desc:"Celeste de selección."},
-  {id:"rosa",name:"Rosa",price:2400,color:"#f472b6",desc:"Rosa intenso."},
-  {id:"oro",name:"Dorado",price:3500,color:"#f6c453",desc:"Nombre dorado."},
-  {id:"arcoiris",name:"Arcoíris",price:9000,color:null,gradient:"linear-gradient(90deg,#ff595e,#ffca3a,#8ac926,#1982c4,#6a4c93)",desc:"Gradiente multicolor."}
+  {id:"azul",name:"Azul",price:1200,color:"#60a5fa",desc:"Azul eléctrico para tu nombre."},
+  {id:"rojo",name:"Rojo",price:1800,color:"#fb7185",desc:"Un nombre que resalta."},
+  {id:"verde",name:"Verde",price:2500,color:"#35d399",desc:"Tono verde FUTBOLIQ."},
+  {id:"violeta",name:"Violeta",price:3500,color:"#c084fc",desc:"Violeta brillante."},
+  {id:"celeste",name:"Celeste",price:4500,color:"#67e8f9",desc:"Celeste de selección."},
+  {id:"rosa",name:"Rosa",price:6000,color:"#f472b6",desc:"Rosa intenso."},
+  {id:"oro",name:"Dorado",price:8500,color:"#f6c453",desc:"Nombre dorado."},
+  {id:"arcoiris",name:"Arcoíris",price:20000,color:null,gradient:"linear-gradient(90deg,#ff595e,#ffca3a,#8ac926,#1982c4,#6a4c93)",desc:"Gradiente multicolor."}
 ];
 const NAME_COLOR_BY_ID = new Map(NAME_COLORS.map(c=>[c.id,c]));
 const OWNER_NAME_COLOR = {
@@ -105,6 +115,12 @@ async function ensureDatabase(env) {
         purchased_at INTEGER NOT NULL,
         PRIMARY KEY(user_id,color_id)
       )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_ranks(
+        user_id INTEGER NOT NULL,
+        rank_id TEXT NOT NULL,
+        purchased_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id,rank_id)
+      )`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS notifications(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -133,6 +149,7 @@ async function ensureDatabase(env) {
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_styles_user ON user_styles(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_name_colors_user ON user_name_colors(user_id)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_ranks_user ON user_ranks(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id,read_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_broadcast_created ON broadcast_messages(created_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_daily_gifts_date ON daily_gifts(claim_date)"),
@@ -152,6 +169,7 @@ async function ensureDatabase(env) {
     if(!userCols.has("profile_style")) await env.DB.prepare("ALTER TABLE users ADD COLUMN profile_style TEXT NOT NULL DEFAULT 'clasico'").run();
     if(!userCols.has("beta_tester")) await env.DB.prepare("ALTER TABLE users ADD COLUMN beta_tester INTEGER NOT NULL DEFAULT 0").run();
     if(!userCols.has("name_color")) await env.DB.prepare("ALTER TABLE users ADD COLUMN name_color TEXT NOT NULL DEFAULT 'blanco'").run();
+    if(!userCols.has("profile_rank")) await env.DB.prepare("ALTER TABLE users ADD COLUMN profile_rank TEXT NOT NULL DEFAULT 'novato'").run();
 
     const gameInfo=await env.DB.prepare("PRAGMA table_info(games)").all();
     const gameCols=new Set((gameInfo.results||[]).map(r=>r.name));
@@ -163,7 +181,9 @@ async function ensureDatabase(env) {
       env.DB.prepare("UPDATE users SET coins=300 WHERE coins IS NULL"),
       env.DB.prepare("UPDATE users SET profile_style='clasico' WHERE profile_style IS NULL OR profile_style=''"),
       env.DB.prepare("UPDATE users SET name_color='blanco' WHERE name_color IS NULL OR name_color=''"),
-      env.DB.prepare("INSERT OR IGNORE INTO user_name_colors(user_id,color_id,purchased_at) SELECT id,'blanco',COALESCE(created_at,?) FROM users").bind(Date.now())
+      env.DB.prepare("INSERT OR IGNORE INTO user_name_colors(user_id,color_id,purchased_at) SELECT id,'blanco',COALESCE(created_at,?) FROM users").bind(Date.now()),
+      env.DB.prepare("UPDATE users SET profile_rank='novato' WHERE profile_rank IS NULL OR profile_rank=''"),
+      env.DB.prepare("INSERT OR IGNORE INTO user_ranks(user_id,rank_id,purchased_at) SELECT id,'novato',COALESCE(created_at,?) FROM users").bind(Date.now())
     ]);
   })().catch(e=>{
     schemaReadyPromise=null;
@@ -293,7 +313,7 @@ function weekendMultiplier(){
   }
 }
 let rewardMultiplierCache={value:1,expiresAt:0,override:null};
-async function getRewardMultiplier(env){
+async function getBaseRewardMultiplier(env){
   const now=Date.now();
   if(rewardMultiplierCache.expiresAt>now&&rewardMultiplierCache.override!==null)return rewardMultiplierCache.value;
   try{
@@ -310,6 +330,20 @@ async function getRewardMultiplier(env){
   const value=weekendMultiplier();
   rewardMultiplierCache={value,expiresAt:now+10000,override:null};
   return value;
+}
+async function getVipMultiplier(env,userId){
+  if(!userId)return 1;
+  try{
+    const row=await env.DB.prepare("SELECT profile_rank AS profileRank FROM users WHERE id=? LIMIT 1").bind(userId).first();
+    return row?.profileRank==="vip"?2:1;
+  }catch{
+    return 1;
+  }
+}
+async function getRewardMultiplier(env,userId=null){
+  const base=await getBaseRewardMultiplier(env);
+  const vip=await getVipMultiplier(env,userId);
+  return base*vip;
 }
 function levelFromXp(xp){return Math.max(1,Math.floor(Math.sqrt(Math.max(0,Number(xp||0))/100))+1)}
 function dailyQuestionIds(date){
@@ -334,7 +368,7 @@ async function updateAnswerStats(env,userId,correct,points){
     await ensureUserStats(env,userId);
     const row=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(userId).first();
     const now=Date.now(),wk=weekKey();
-    const boost=await getRewardMultiplier(env);
+    const boost=await getRewardMultiplier(env,userId);
 const xpGain=(correct?Math.max(5,Math.floor(Number(points||0)/10)):1)*boost;
     const streak=correct?(Number(row?.current_streak||0)+1):0;
     const best=Math.max(Number(row?.best_streak||0),streak);
@@ -421,12 +455,13 @@ async function currentUser(req,env) {
   const raw=getCookie(req,"f_session");
   if(!raw) return null;
   const u=await env.DB.prepare(
-    "SELECT u.id,u.username,u.role,u.status,u.best_score AS bestScore,u.games,u.coins,u.profile_style AS profileStyle,u.beta_tester AS betaTester,u.name_color AS nameColor FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? LIMIT 1"
+    "SELECT u.id,u.username,u.role,u.status,u.best_score AS bestScore,u.games,u.coins,u.profile_style AS profileStyle,u.profile_rank AS profileRank,u.beta_tester AS betaTester,u.name_color AS nameColor FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? LIMIT 1"
   ).bind(await digest(raw),Date.now()).first();
   if(!u) return null;
   u.betaTester=!!u.betaTester;
   u.owner=isOwnerUser(u,env);
   u.nameColor=u.nameColor||"blanco";
+  u.profileRank=u.profileRank||"novato";
   return u;
 }
 
@@ -493,10 +528,13 @@ async function api(req,env) {
     const ownedIds=new Set((owned.results||[]).map(r=>r.styleId));
     const ownedColors=await env.DB.prepare("SELECT color_id AS colorId FROM user_name_colors WHERE user_id=?").bind(u.id).all();
     const ownedColorIds=new Set((ownedColors.results||[]).map(r=>r.colorId));
+    const ownedRanks=await env.DB.prepare("SELECT rank_id AS rankId FROM user_ranks WHERE user_id=?").bind(u.id).all();
+    const ownedRankIds=new Set((ownedRanks.results||[]).map(r=>r.rankId));
     return json({
       profile:u,
       styles:STYLES.map(s=>({...s,owned:ownedIds.has(s.id)||s.id==="clasico",equipped:u.profileStyle===s.id})),
-      nameColors:NAME_COLORS.map(c=>({...c,owned:ownedColorIds.has(c.id)||c.id==="blanco",equipped:!u.owner&&u.nameColor===c.id}))
+      nameColors:NAME_COLORS.map(c=>({...c,owned:ownedColorIds.has(c.id)||c.id==="blanco",equipped:!u.owner&&u.nameColor===c.id})),
+      ranks:RANKS.map(r=>({...r,owned:ownedRankIds.has(r.id)||r.id==="novato",equipped:u.profileRank===r.id}))
     });
   }
 
@@ -507,11 +545,15 @@ async function api(req,env) {
     const ownedIds=new Set((owned.results||[]).map(r=>r.styleId));
     const ownedColors=await env.DB.prepare("SELECT color_id AS colorId FROM user_name_colors WHERE user_id=?").bind(u.id).all();
     const ownedColorIds=new Set((ownedColors.results||[]).map(r=>r.colorId));
+    const ownedRanks=await env.DB.prepare("SELECT rank_id AS rankId FROM user_ranks WHERE user_id=?").bind(u.id).all();
+    const ownedRankIds=new Set((ownedRanks.results||[]).map(r=>r.rankId));
     return json({
       coins:u.coins,
       equipped:u.profileStyle,
+      equippedRank:u.profileRank,
       styles:STYLES.map(s=>({...s,owned:ownedIds.has(s.id)||s.id==="clasico",equipped:u.profileStyle===s.id})),
       nameColors:NAME_COLORS.map(c=>({...c,owned:ownedColorIds.has(c.id)||c.id==="blanco",equipped:!u.owner&&u.nameColor===c.id})),
+      ranks:RANKS.map(r=>({...r,owned:ownedRankIds.has(r.id)||r.id==="novato",equipped:u.profileRank===r.id})),
       ownerNameColor:u.owner?OWNER_NAME_COLOR:null
     });
   }
@@ -549,6 +591,41 @@ async function api(req,env) {
     await env.DB.prepare("UPDATE users SET profile_style=?,updated_at=? WHERE id=?").bind(styleId,Date.now(),u.id).run();
     await log(env,u.id,"style_equip",u.id,{styleId});
     return json({ok:true,profileStyle:styleId});
+  }
+
+  if(path==="/api/shop/rank/buy" && req.method==="POST") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const rankId=String(x.rankId||"");
+    const rank=RANK_BY_ID.get(rankId);
+    if(!rank) return json({error:"Rango inexistente."},404);
+    const own=await env.DB.prepare("SELECT 1 FROM user_ranks WHERE user_id=? AND rank_id=? LIMIT 1").bind(u.id,rankId).first();
+    if(own || rankId==="novato") return json({error:"Ya tienes este rango."},409);
+    if(u.coins<rank.price) return json({error:"No tienes suficientes monedas."},400);
+    const paid=await env.DB.prepare("UPDATE users SET coins=coins-?,updated_at=? WHERE id=? AND coins>=?").bind(rank.price,Date.now(),u.id,rank.price).run();
+    if(!paid.meta?.changes) return json({error:"No tienes suficientes monedas."},400);
+    try{
+      await env.DB.prepare("INSERT INTO user_ranks(user_id,rank_id,purchased_at) VALUES(?,?,?)").bind(u.id,rankId,Date.now()).run();
+    }catch(e){
+      await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(rank.price,Date.now(),u.id).run();
+      return json({error:"No se pudo guardar la compra."},500);
+    }
+    await log(env,u.id,"rank_buy",u.id,{rankId,price:rank.price,vip:!!rank.vip});
+    return json({ok:true,coins:u.coins-rank.price,rankId});
+  }
+
+  if(path==="/api/shop/rank/equip" && req.method==="POST") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const rankId=String(x.rankId||"");
+    if(!RANK_BY_ID.has(rankId)) return json({error:"Rango inexistente."},404);
+    const own=await env.DB.prepare("SELECT 1 FROM user_ranks WHERE user_id=? AND rank_id=? LIMIT 1").bind(u.id,rankId).first();
+    if(!own && rankId!=="novato") return json({error:"Primero debes comprar ese rango."},403);
+    await env.DB.prepare("UPDATE users SET profile_rank=?,updated_at=? WHERE id=?").bind(rankId,Date.now(),u.id).run();
+    await log(env,u.id,"rank_equip",u.id,{rankId,vip:rankId==="vip"});
+    return json({ok:true,profileRank:rankId});
   }
 
   if(path==="/api/shop/name-color/buy" && req.method==="POST") {
@@ -647,7 +724,7 @@ async function api(req,env) {
       return json({error:"La cuenta no pudo iniciar sesión. Revisa la base de datos."},500);
     }
 
-    return json({user:{id:userId,username,role,status:"active",bestScore:0,games:0,coins:300,profileStyle:"clasico",betaTester:false,owner:isOwnerName(username,env),nameColor:"blanco"}},201,{"Set-Cookie":cookieHeader(req,"f_session",session,604800)});
+    return json({user:{id:userId,username,role,status:"active",bestScore:0,games:0,coins:300,profileStyle:"clasico",profileRank:"novato",betaTester:false,owner:isOwnerName(username,env),nameColor:"blanco"}},201,{"Set-Cookie":cookieHeader(req,"f_session",session,604800)});
   }
 
   if(path==="/api/login" && req.method==="POST") {
@@ -676,7 +753,7 @@ async function api(req,env) {
       return json({error:"No se pudo iniciar la sesión. Revisa la base de datos."},500);
     }
     const notifications=await consumeNotifications(env,row.id);
-    return json({user:{id:row.id,username:row.username,role:row.role,status:row.status,bestScore:row.best_score,games:row.games,coins:row.coins,profileStyle:row.profile_style,betaTester:!!row.beta_tester,owner:isOwnerName(row.username,env),nameColor:row.name_color||"blanco"},notifications},200,{"Set-Cookie":cookieHeader(req,"f_session",session,604800)});
+    return json({user:{id:row.id,username:row.username,role:row.role,status:row.status,bestScore:row.best_score,games:row.games,coins:row.coins,profileStyle:row.profile_style,profileRank:row.profile_rank||"novato",betaTester:!!row.beta_tester,owner:isOwnerName(row.username,env),nameColor:row.name_color||"blanco"},notifications},200,{"Set-Cookie":cookieHeader(req,"f_session",session,604800)});
   }
 
   if(path==="/api/logout" && req.method==="POST") {
@@ -690,12 +767,12 @@ async function api(req,env) {
     if(!u) return json({error:"Inicia sesión."},403);
     const claimDate=new Date().toISOString().slice(0,10);
     const gift=await env.DB.prepare("SELECT 1 FROM daily_gifts WHERE user_id=? AND claim_date=? LIMIT 1").bind(u.id,claimDate).first();
-    if(req.method==="GET") return json({claimed:Boolean(gift),coins:u.coins||0,claimDate,multiplier:await getRewardMultiplier(env)});
-    if(gift) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate,multiplier:await getRewardMultiplier(env)},409);
+    if(req.method==="GET") return json({claimed:Boolean(gift),coins:u.coins||0,claimDate,multiplier:await getRewardMultiplier(env,u.id)});
+    if(gift) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate,multiplier:await getRewardMultiplier(env,u.id)},409);
     const inserted=await env.DB.prepare("INSERT OR IGNORE INTO daily_gifts(user_id,claim_date,claimed_at) VALUES(?,?,?)").bind(u.id,claimDate,Date.now()).run();
     if(!inserted.meta?.changes) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate},409);
     try {
-      const boost=await getRewardMultiplier(env);
+      const boost=await getRewardMultiplier(env,u.id);
       const amount=150*boost;
       await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(amount,Date.now(),u.id).run();
       const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
@@ -766,7 +843,7 @@ async function api(req,env) {
   if(path==="/api/ranking/weekly" && req.method==="GET") {
     await ensureFeatureTables(env);
     const wk=weekKey();
-    const rows=await env.DB.prepare("SELECT u.id,u.username,u.name_color AS nameColor,s.weekly_score AS score,s.wins FROM user_stats s JOIN users u ON u.id=s.user_id WHERE u.status='active' AND s.weekly_key=? ORDER BY s.weekly_score DESC,s.wins DESC,u.id ASC LIMIT 100").bind(wk).all();
+    const rows=await env.DB.prepare("SELECT u.id,u.username,u.name_color AS nameColor,u.profile_rank AS profileRank,s.weekly_score AS score,s.wins FROM user_stats s JOIN users u ON u.id=s.user_id WHERE u.status='active' AND s.weekly_key=? ORDER BY s.weekly_score DESC,s.wins DESC,u.id ASC LIMIT 100").bind(wk).all();
     return json({week:wk,ranking:rows.results||[]});
   }
 
@@ -824,7 +901,7 @@ async function api(req,env) {
       const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(u.id).first();
       const yesterday=new Date(Date.parse(date+"T00:00:00Z")-86400000).toISOString().slice(0,10);
       const dailyStreak=s?.daily_last_date===yesterday?Number(s.daily_streak||0)+1:1;
-      const bestDaily=Math.max(Number(s?.best_daily_streak||0),dailyStreak),wk=weekKey(),boost=await getRewardMultiplier(env),xp=Number(s?.xp||0)+(correct?50:10)*boost;
+      const bestDaily=Math.max(Number(s?.best_daily_streak||0),dailyStreak),wk=weekKey(),boost=await getRewardMultiplier(env,u.id),xp=Number(s?.xp||0)+(correct?50:10)*boost;
       await env.DB.prepare("UPDATE user_stats SET xp=?,daily_streak=?,best_daily_streak=?,daily_last_date=?,weekly_score=?,weekly_key=?,updated_at=? WHERE user_id=?")
         .bind(xp,dailyStreak,bestDaily,date,s?.weekly_key===wk?Number(s?.weekly_score||0):0,wk,now,u.id).run();
       await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(100*boost,now,u.id).run();
@@ -1011,7 +1088,7 @@ await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").b
         await maybeUnlockAchievements(env,winner,s);
         const loser=winner===Number(fresh.challenger_id)?Number(fresh.opponent_id):Number(fresh.challenger_id);
         await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(loser,"duel_result","⚔️ El duelo terminó. Ganó "+(winner===Number(fresh.challenger_id)?fresh.challenger:fresh.opponent)+".",now).run().catch(()=>{});
-        await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(winner,"duel_result","🏆 Ganaste el duelo y recibiste "+(100*await getRewardMultiplier(env))+" monedas.",now).run().catch(()=>{});
+        await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(winner,"duel_result","🏆 Ganaste el duelo y recibiste "+(100*await getRewardMultiplier(env,winner))+" monedas.",now).run().catch(()=>{});
       }
       return json({correct,done:true,challengerScore:fresh.challenger_score,opponentScore:fresh.opponent_score,winner});
     }
@@ -1019,7 +1096,7 @@ await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").b
   }
 
   if(path==="/api/ranking" && req.method==="GET") {
-    const rows=await env.DB.prepare("SELECT username,best_score AS score,games,profile_style AS profileStyle,beta_tester AS betaTester,name_color AS nameColor FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, games DESC, id ASC LIMIT 100").all();
+    const rows=await env.DB.prepare("SELECT username,best_score AS score,games,profile_style AS profileStyle,profile_rank AS profileRank,beta_tester AS betaTester,name_color AS nameColor FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, games DESC, id ASC LIMIT 100").all();
     const ranking=(rows.results||[]).map(r=>({...r,betaTester:!!r.betaTester,owner:isOwnerName(r.username,env)}));
     return json({ranking});
   }
@@ -1073,7 +1150,7 @@ await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").b
 
     if(correct) {
       const bonus=next>=ids.length?50:0;
-      const rewardMultiplier=await getRewardMultiplier(env);
+      const rewardMultiplier=await getRewardMultiplier(env,u.id);
       const awardedCoins=(coinGain+bonus)*rewardMultiplier;
       await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(awardedCoins,Date.now(),u.id).run();
       totalCoins=(u.coins||0)+awardedCoins;
@@ -1323,6 +1400,7 @@ await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").b
           env.DB.prepare("DELETE FROM dev_sessions WHERE user_id=?").bind(id),
           env.DB.prepare("DELETE FROM user_styles WHERE user_id=?").bind(id),
           env.DB.prepare("DELETE FROM user_name_colors WHERE user_id=?").bind(id),
+          env.DB.prepare("DELETE FROM user_ranks WHERE user_id=?").bind(id),
           env.DB.prepare("DELETE FROM notifications WHERE user_id=?").bind(id),
           env.DB.prepare("DELETE FROM daily_gifts WHERE user_id=?").bind(id),
           env.DB.prepare("DELETE FROM users WHERE id=?").bind(id)
