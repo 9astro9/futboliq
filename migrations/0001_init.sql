@@ -43,4 +43,4 @@ CREATE TABLE IF NOT EXISTS audit_logs(
 CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_games_user ON games(user_id);
 CREATE INDEX IF NOT EXISTS idx_dev_expiry ON dev_sessions(expires_at);
-CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at);\nCREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_nocase ON users(username COLLATE NOCASE);\n
+CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at);
