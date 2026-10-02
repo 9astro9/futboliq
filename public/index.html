@@ -49,11 +49,11 @@ input,select{width:100%;padding:12px;border-radius:11px;border:1px solid var(--l
 .stat b{display:block;font-size:20px}
 .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:20px 0 12px}
 .section-head h2{margin:0}
-.diff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.diff-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .diff{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--card);cursor:pointer}
 .diff.selected{border-color:var(--accent);box-shadow:0 0 0 2px rgba(53,211,154,.15)}
 .diff .badge{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:800;background:var(--card2);margin-bottom:9px}
-.badge.easy{color:#55e6a9}.badge.hard{color:#f6c453}.badge.impossible{color:#ff8585}
+.badge.easy{color:#55e6a9}.badge.hard{color:#f6c453}.badge.impossible{color:#ff8585}.badge.blassvec{color:#35d399}
 .diff h3{margin:0 0 4px}.diff p{margin:0;color:var(--muted);font-size:14px}
 .panel{margin-top:20px}
 .back{margin-bottom:12px}
@@ -127,6 +127,7 @@ th{color:var(--muted);font-weight:650}
 .name-color-preview{height:72px;border-radius:12px;display:grid;place-items:center;font-size:28px;font-weight:950;border:1px solid var(--line);background:var(--card2)}
 .owner-color-preview{background:linear-gradient(90deg,#35d399,#f6c453,#7dd3fc,#c084fc,#35d399)!important;background-size:200% 100%;animation:ownerShift 4s linear infinite}
 @keyframes ownerShift{to{background-position:200% 0}}
+.daily-gift{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px;border:1px solid #6f5a18;background:linear-gradient(135deg,#2b230b,#171c22);border-radius:14px;margin:16px 0}.daily-gift-info{display:flex;align-items:center;gap:12px}.daily-gift-icon{font-size:30px}.daily-gift-title{font-weight:900}.daily-gift-desc{font-size:13px;color:var(--muted)}.gift-claimed{opacity:.75}
 .notice-modal{position:fixed;inset:0;z-index:50;background:rgba(2,6,12,.72);display:grid;place-items:center;padding:20px}
 .notice-modal.hidden{display:none}
 .notice-box{width:min(520px,100%);background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 25px 80px rgba(0,0,0,.45)}
@@ -134,7 +135,7 @@ th{color:var(--muted);font-weight:650}
 .notice-list{display:grid;gap:10px;margin:16px 0}
 .notice-item{padding:13px 14px;border-radius:14px;background:var(--card2);border:1px solid var(--line)}
 .footer{padding:28px 0;color:var(--muted);font-size:13px;text-align:center}
-@media(max-width:900px){.menu-grid{grid-template-columns:repeat(2,1fr)}.shop-grid{grid-template-columns:repeat(2,1fr)}.profile-layout{grid-template-columns:1fr}}
+@media(max-width:900px){.menu-grid{grid-template-columns:repeat(2,1fr)}.shop-grid{grid-template-columns:repeat(2,1fr)}.profile-layout{grid-template-columns:1fr}.diff-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:620px){.wrap{padding:14px}.menu-grid,.diff-grid,.shop-grid{grid-template-columns:1fr}.hero{padding:22px}.hero h1{font-size:31px}.question{font-size:25px}.profile-stats{grid-template-columns:1fr}.actions{width:100%}}
 </style>
 </head>
@@ -181,6 +182,10 @@ th{color:var(--muted);font-weight:650}
         <div class="stat"><span class="small muted">Partidas</span><b id="homeGames">0</b></div>
       </div>
     </div>
+    <div class="daily-gift" id="dailyGiftBox">
+      <div class="daily-gift-info"><div class="daily-gift-icon">🎁</div><div><div class="daily-gift-title">Regalo diario · +150 🪙</div><div id="giftStatus" class="daily-gift-desc">Reclamá tus 150 monedas de hoy.</div></div></div>
+      <button class="btn gold" id="dailyGiftBtn" onclick="claimDailyGift()">🎁 Reclamar +150</button>
+    </div>
 
     <div class="menu-grid">
       <div class="menu-card" onclick="showView('playView')"><div class="menu-icon">🎮</div><h3>Jugar</h3><p>Elegí una dificultad y empezá una partida.</p></div>
@@ -200,6 +205,7 @@ th{color:var(--muted);font-weight:650}
       <div id="diff-facil" class="diff selected" onclick="setDifficulty('facil')"><span class="badge easy">FÁCIL</span><h3>Fácil</h3><p>168 preguntas · 100 puntos por acierto · 8 monedas.</p></div>
       <div id="diff-dificil" class="diff" onclick="setDifficulty('dificil')"><span class="badge hard">DIFÍCIL</span><h3>Difícil</h3><p>168 preguntas · 175 puntos por acierto · 14 monedas.</p></div>
       <div id="diff-imposible" class="diff" onclick="setDifficulty('imposible')"><span class="badge impossible">IMPOSIBLE</span><h3>Imposible</h3><p>168 preguntas · 300 puntos por acierto · 25 monedas.</p></div>
+      <div id="diff-blassvec" class="diff" onclick="setDifficulty('blassvec')"><span class="badge blassvec">BLASSVEC</span><h3>Blassvec Modo</h3><p>30 preguntas · las más fáciles · 0 puntos.</p></div>
     </div>
   </section>
 
@@ -355,7 +361,7 @@ async function submitAuth(){
     const x=await api(path,{method:"POST",body:JSON.stringify({username,password})});
     user=x.user;
     $("auth").classList.add("hidden");$("app").classList.remove("hidden");
-    updateHome();accountUI();showView("homeView");loadRanking();showNotifications(x.notifications);
+    updateHome();accountUI();showView("homeView");loadRanking();loadDailyGift();showNotifications(x.notifications);
   }catch(e){$("authMsg").textContent=e.message}
   finally{btn.disabled=false;btn.textContent=mode==="register"?"Crear mi cuenta":"Entrar"}
 }
@@ -364,6 +370,26 @@ function accountUI(){
   const ownerBadge=user.owner?"<span class='badge-owner'>OWNER</span>":"";
   const betaBadge=user.betaTester?"<span class='badge-beta'>BETA TESTER</span>":"";
   $("accountArea").innerHTML="<span class='small "+(user.owner?"":"muted")+"'>"+nameHtml(user.username,user.nameColor,user.owner)+ownerBadge+betaBadge+" · 🪙 "+Number(user.coins||0).toLocaleString("es-ES")+"</span><button class='btn' onclick='logout()'>Salir</button>";
+}
+async function loadDailyGift(){
+  if(!user)return;
+  try{
+    const x=await api("/api/daily-gift");
+    const btn=$("dailyGiftBtn"),status=$("giftStatus"),box=$("dailyGiftBox");
+    if(x.claimed){btn.textContent="✅ Ya reclamado";btn.disabled=true;box.classList.add("gift-claimed");status.textContent="Ya cobraste las 150 monedas de hoy. Volvé mañana."}
+    else{btn.textContent="🎁 Reclamar +150";btn.disabled=false;box.classList.remove("gift-claimed");status.textContent="Reclamá tus 150 monedas de hoy."}
+    if(x.coins!==undefined){user.coins=x.coins;updateHome()}
+  }catch{if($("giftStatus"))$("giftStatus").textContent="No se pudo comprobar el regalo diario."}
+}
+async function claimDailyGift(){
+  const btn=$("dailyGiftBtn");if(!user||btn.disabled)return;
+  btn.disabled=true;btn.textContent="Cobrando…";
+  try{
+    const x=await api("/api/daily-gift",{method:"POST",body:"{}"});
+    user.coins=x.coins;updateHome();
+    btn.textContent="✅ Ya reclamado";$("giftStatus").textContent="¡Recibiste 150 monedas! Volvé mañana.";beep(980);
+    $("dailyGiftBox").classList.add("gift-claimed");
+  }catch(e){btn.disabled=false;btn.textContent="🎁 Reclamar +150";$("giftStatus").textContent=e.message||"No se pudo reclamar el regalo.";beep(220)}
 }
 function updateHome(){
   if(!user)return;
@@ -375,9 +401,9 @@ function updateHome(){
 }
 function setDifficulty(d){
   selectedDifficulty=d;localStorage.setItem("fql_difficulty",d);
-  ["facil","dificil","imposible"].forEach(x=>$("diff-"+x).classList.toggle("selected",x===d));
+  ["facil","dificil","imposible","blassvec"].forEach(x=>$("diff-"+x).classList.toggle("selected",x===d));
 }
-function difficultyLabel(d){return d==="facil"?"Fácil":d==="dificil"?"Difícil":"Imposible"}
+function difficultyLabel(d){return d==="facil"?"Fácil":d==="dificil"?"Difícil":d==="imposible"?"Imposible":"Blassvec Modo"}
 async function startGame(){
   try{
     const x=await api("/api/game",{method:"POST",body:JSON.stringify({difficulty:selectedDifficulty})});
@@ -477,7 +503,7 @@ async function loadRanking(){
 async function refreshMe(){
   try{
     const x=await api("/api/me");
-    if(x.user){user=x.user;$("auth").classList.add("hidden");$("app").classList.remove("hidden");updateHome();showView("homeView");loadRanking();showNotifications(x.notifications)}
+    if(x.user){user=x.user;$("auth").classList.add("hidden");$("app").classList.remove("hidden");updateHome();showView("homeView");loadRanking();loadDailyGift();showNotifications(x.notifications)}
   }catch{}
 }
 async function logout(){try{await api("/api/logout",{method:"POST"})}finally{location.reload()}}
