@@ -355,7 +355,7 @@ async function loadProfile(){
       "<div class='card profile-card "+style.cls+"'><div class='profile-banner'></div><div class='profile-avatar'>"+escapeHtml((user.username||"?").slice(0,1).toUpperCase())+"</div><div class='profile-name'>"+escapeHtml(user.username)+"</div><div class='profile-style'>"+style.icon+" "+style.name+"</div><div class='profile-stats'><div class='stat'><span class='small muted'>Récord</span><b>"+Number(user.bestScore||0).toLocaleString("es-ES")+"</b></div><div class='stat'><span class='small muted'>Partidas</span><b>"+Number(user.games||0).toLocaleString("es-ES")+"</b></div><div class='stat'><span class='small muted'>Monedas</span><b>"+Number(user.coins||0).toLocaleString("es-ES")+"</b></div></div></div>"+
       "<div class='card'><h2>Estilos</h2><p class='muted'>Tu perfil usa <strong>"+style.name+"</strong>. Visitá la tienda para desbloquear más.</p><button class='btn primary' onclick='showView(\"shopView\");loadShop()'>Abrir tienda</button></div>"+
       "</div>";
-  }catch(e){$("profileContent").innerHTML="<p class='muted'>"+escapeHtml(e.message)+"</p>"}
+  }catch(e){$("profileView").innerHTML="<p class='muted'>"+escapeHtml(e.message)+"</p>"}
 }
 async function loadShop(){
   try{
