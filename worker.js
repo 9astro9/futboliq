@@ -3,7 +3,8 @@ import { QUESTIONS, QUESTION_SETS, QUESTION_COUNTS } from "./questions.js";
 const DIFFICULTY_META = {
   facil: {label:"Fácil", points:100, coins:8},
   dificil: {label:"Difícil", points:175, coins:14},
-  imposible: {label:"Imposible", points:300, coins:25}
+  imposible: {label:"Imposible", points:300, coins:25},
+  blassvec: {label:"Blassvec Modo", points:0, coins:0}
 };
 
 const STYLES = [
@@ -119,6 +120,7 @@ async function ensureDatabase(env) {
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_styles_user ON user_styles(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_name_colors_user ON user_name_colors(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id,read_at)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_daily_gifts_date ON daily_gifts(claim_date)"),
       env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_nocase ON users(username COLLATE NOCASE)")
     ]);
 
@@ -466,6 +468,26 @@ async function api(req,env) {
     return json({ok:true},200,{"Set-Cookie":cookieHeader(req,"f_session","",0)});
   }
 
+  if(path==="/api/daily-gift" && (req.method==="GET" || req.method==="POST")) {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    const claimDate=new Date().toISOString().slice(0,10);
+    const gift=await env.DB.prepare("SELECT 1 FROM daily_gifts WHERE user_id=? AND claim_date=? LIMIT 1").bind(u.id,claimDate).first();
+    if(req.method==="GET") return json({claimed:Boolean(gift),coins:u.coins||0,claimDate});
+    if(gift) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate},409);
+    const inserted=await env.DB.prepare("INSERT OR IGNORE INTO daily_gifts(user_id,claim_date,claimed_at) VALUES(?,?,?)").bind(u.id,claimDate,Date.now()).run();
+    if(!inserted.meta?.changes) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate},409);
+    try {
+      await env.DB.prepare("UPDATE users SET coins=coins+150,updated_at=? WHERE id=?").bind(Date.now(),u.id).run();
+      const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
+      await log(env,u.id,"daily_gift",u.id,{amount:150,claimDate});
+      return json({ok:true,claimed:true,amount:150,coins:fresh?.coins??((u.coins||0)+150),claimDate});
+    } catch(e) {
+      await env.DB.prepare("DELETE FROM daily_gifts WHERE user_id=? AND claim_date=?").bind(u.id,claimDate).run().catch(()=>{});
+      return json({error:"No se pudo acreditar el regalo."},500);
+    }
+  }
+
   if(path==="/api/ranking" && req.method==="GET") {
     const rows=await env.DB.prepare("SELECT username,best_score AS score,games,profile_style AS profileStyle,beta_tester AS betaTester,name_color AS nameColor FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, games DESC, id ASC LIMIT 100").all();
     const ranking=(rows.results||[]).map(r=>({...r,betaTester:!!r.betaTester,owner:isOwnerName(r.username,env)}));
@@ -479,9 +501,10 @@ async function api(req,env) {
     const difficulty=String(x.difficulty||"facil");
     if(!QUESTION_SETS[difficulty] || !DIFFICULTY_META[difficulty]) return json({error:"Dificultad inválida."},400);
     const pool=QUESTION_SETS[difficulty];
+    const questionCount=difficulty==="blassvec"?30:10;
     const picked=[];
     const used=new Set();
-    while(picked.length<10 && picked.length<pool.length){
+    while(picked.length<questionCount && picked.length<pool.length){
       const candidate=pool[Math.floor(Math.random()*pool.length)];
       if(!used.has(candidate)){used.add(candidate);picked.push(candidate);}
     }
