@@ -97,7 +97,7 @@ async function ensureDatabase(env) {
         style_id TEXT NOT NULL,
         purchased_at INTEGER NOT NULL,
         PRIMARY KEY(user_id,style_id)
-      `),
+      )`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_name_colors(
         user_id INTEGER NOT NULL,
         color_id TEXT NOT NULL,
