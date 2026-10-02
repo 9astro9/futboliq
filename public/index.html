@@ -74,7 +74,7 @@ let mode="login", user=null, gameId=null, devOpen=false;
 let sound=localStorage.getItem("fql_sound")!=="off";
 let theme=localStorage.getItem("fql_theme")||"dark";
 let lang=localStorage.getItem("fql_lang")||"es";
-let widgetId=null, turnstileReady=false, turnstileConfig=null, turnstileRendering=false;
+let widgetId=null, turnstileReady=false, turnstileConfig=null, turnstileRendering=false, turnstileWaiter=null;
 const $=id=>document.getElementById(id);
 const T={
 es:{login:"Iniciar sesión",register:"Crear cuenta",account:"Cuenta",start:"Empezar partida",next:"Siguiente",finish:"Partida terminada",points:"Puntos",settings:"Configuración",soundOn:"Activado",soundOff:"Desactivado",dark:"Oscuro",light:"Claro"},
@@ -114,6 +114,10 @@ function switchAuth(m){
   else if(!turnstileRendering)renderTurnstile();
 }
 function removeTurnstile(){
+  if(turnstileWaiter){
+    try{turnstileWaiter.reject(new Error("CAPTCHA reiniciado."))}catch{}
+    turnstileWaiter=null;
+  }
   if(widgetId!==null && window.turnstile){
     try{turnstile.remove(widgetId)}catch{}
   }
@@ -144,9 +148,33 @@ function renderTurnstile(){
           widgetId=turnstile.render($("turnstileBox"),{
             sitekey:turnstileConfig.turnstileSiteKey,
             theme:theme==="dark"?"dark":"light",
-            callback:()=>{turnstileReady=true},
-            "expired-callback":()=>{turnstileReady=false},
-            "error-callback":()=>{turnstileReady=false}
+            appearance:"interaction-only",
+            execution:"execute",
+            retry:"never",
+            callback:(token)=>{
+              turnstileReady=!!token;
+              if(turnstileWaiter){
+                const w=turnstileWaiter;
+                turnstileWaiter=null;
+                w.resolve(token);
+              }
+            },
+            "expired-callback":()=>{
+              turnstileReady=false;
+              if(turnstileWaiter){
+                const w=turnstileWaiter;
+                turnstileWaiter=null;
+                w.reject(new Error("El CAPTCHA expiró. Inténtalo de nuevo."));
+              }
+            },
+            "error-callback":()=>{
+              turnstileReady=false;
+              if(turnstileWaiter){
+                const w=turnstileWaiter;
+                turnstileWaiter=null;
+                w.reject(new Error("No se pudo completar el CAPTCHA."));
+              }
+            }
           });
           turnstileReady=false;
           turnstileRendering=false;
@@ -171,6 +199,24 @@ function tokenValue(){
   if(!window.turnstile || widgetId===null || !turnstileReady)return "";
   try{return turnstile.getResponse(widgetId)||""}catch{return ""}
 }
+function executeTurnstile(){
+  if(tokenValue()) return Promise.resolve(tokenValue());
+  if(!window.turnstile || widgetId===null) return Promise.reject(new Error("El CAPTCHA todavía no está listo."));
+  if(turnstileWaiter) return turnstileWaiter.promise;
+  const promise=new Promise((resolve,reject)=>{
+    turnstileWaiter={resolve,reject,promise:null};
+  });
+  turnstileWaiter.promise=promise;
+  try{
+    turnstileReady=false;
+    turnstile.execute(widgetId);
+  }catch(e){
+    const w=turnstileWaiter;
+    turnstileWaiter=null;
+    w.reject(new Error("No se pudo iniciar el CAPTCHA."));
+  }
+  return promise;
+}
 async function submitAuth(){
   const username=$("username").value.trim();
   const password=$("password").value;
@@ -182,7 +228,8 @@ async function submitAuth(){
   btn.textContent="Comprobando…";
   try{
     const path=mode==="login"?"/api/login":"/api/register";
-    const x=await api(path,{method:"POST",body:JSON.stringify({username,password,turnstileToken:tokenValue()})});
+    const tsToken=await executeTurnstile();
+    const x=await api(path,{method:"POST",body:JSON.stringify({username,password,turnstileToken:tsToken})});
     user=x.user;
     $("auth").classList.add("hidden");
     $("app").classList.remove("hidden");
