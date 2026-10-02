@@ -415,6 +415,7 @@ async function loadDailyGift(){
   if(!user)return;
   try{
     const x=await api("/api/daily-gift");
+    if(x.multiplier!==undefined&&typeof updateWeekendUIWithMultiplier==="function")updateWeekendUIWithMultiplier(x.multiplier);
     const btn=$("dailyGiftBtn"),status=$("giftStatus"),box=$("dailyGiftBox");
     if(x.claimed){btn.textContent="✅ Ya reclamado";btn.disabled=true;box.classList.add("gift-claimed");status.textContent="Ya cobraste las 150 monedas de hoy. Volvé mañana."}
     else{btn.disabled=false;box.classList.remove("gift-claimed");btn.textContent=weekendMultiplierUI()===3?"🎁 Reclamar +450":"🎁 Reclamar +150";status.textContent=weekendMultiplierUI()===3?"Reclamá tus 450 monedas de hoy por el x3 del finde.":"Reclamá tus 150 monedas de hoy."}
