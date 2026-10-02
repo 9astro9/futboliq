@@ -113,6 +113,13 @@ async function ensureDatabase(env) {
         created_at INTEGER NOT NULL,
         read_at INTEGER
       )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS daily_gifts(
+        user_id INTEGER NOT NULL,
+        claim_date TEXT NOT NULL,
+        claimed_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id,claim_date),
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_games_user ON games(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_dev_expiry ON dev_sessions(expires_at)"),
