@@ -261,6 +261,8 @@ function toggleSound(){sound=!sound;localStorage.setItem("fql_sound",sound?"on":
 function toggleTheme(){theme=theme==="dark"?"light":"dark";localStorage.setItem("fql_theme",theme);applyPrefs()}
 function beep(freq=520){if(!sound)return;try{const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;g.gain.value=.04;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.08)}catch{}}
 function openSettings(){showView("settingsView")}
+function openPlay(){showView("playView")}
+function openShop(){showView("shopView");loadShop()}
 function showView(id){
   ["homeView","playView","profileView","shopView","rankingView","settingsView","gameView","devPanel"].forEach(v=>$(v).classList.add("hidden"));
   $(id).classList.remove("hidden");
@@ -362,8 +364,8 @@ async function loadShop(){
       const st=STYLES[s.id]||STYLES.clasico;
       let action="";
       if(s.equipped) action="<button class='btn' disabled>Equipado</button>";
-      else if(s.owned) action="<button class='btn primary' onclick='equipStyle(\""+s.id+"\")'>Equipar</button>";
-      else action="<button class='btn gold' onclick='buyStyle(\""+s.id+"\")'>Comprar · 🪙 "+Number(s.price).toLocaleString("es-ES")+"</button>";
+      else if(s.owned) action="<button class='btn primary' data-id='"+s.id+"' onclick='equipStyle(this.dataset.id)'>Equipar</button>";
+      else action="<button class='btn gold' data-id='"+s.id+"' onclick='buyStyle(this.dataset.id)'>Comprar · 🪙 "+Number(s.price).toLocaleString("es-ES")+"</button>";
       return "<div class='style-card "+st.cls+"'><div class='style-preview'>"+st.icon+"</div><h3>"+st.name+"</h3><p>"+escapeHtml(s.desc)+"</p><div class='actions'>"+action+" "+(s.owned?"<span class='small muted'>Desbloqueado</span>":"<span class='price'>"+Number(s.price).toLocaleString("es-ES")+" 🪙</span>")+"</div></div>"
     }).join("");
   }catch(e){$("shopContent").innerHTML="<p class='muted'>"+escapeHtml(e.message)+"</p>"}
