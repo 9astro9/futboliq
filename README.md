@@ -7,7 +7,6 @@ Quiz de fútbol con cuentas, ranking global, configuración y consola administra
 - Cloudflare Workers: backend y API.
 - Workers Static Assets: interfaz.
 - Cloudflare D1: cuentas, sesiones, partidas, ranking y auditoría.
-- Cloudflare Turnstile: CAPTCHA.
 
 ## Despliegue
 
@@ -23,11 +22,6 @@ Configura en el proyecto de Cloudflare:
 - `PASSWORD_PEPPER`
 - `ADMIN_USERNAME`
 - `DEV_PANEL_CODE`
-- `TURNSTILE_SECRET`
-
-Y una variable pública:
-
-- `TURNSTILE_SITEKEY`
 
 Nunca subas estos valores a GitHub.
 
@@ -61,5 +55,5 @@ Puedes empezar con los planes gratuitos de Cloudflare dentro de sus límites act
 - Las sesiones se almacenan como hashes.
 - Las contraseñas usan PBKDF2-HMAC-SHA-256 con salt individual.
 - El código de desarrollador vive solo como secreto del servidor.
-- Turnstile se valida en el servidor.
+- El registro y el inicio de sesión tienen límites de intentos por IP.
 - Se comprueba el origen de las operaciones de escritura.
