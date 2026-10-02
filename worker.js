@@ -432,6 +432,14 @@ async function api(req,env) {
     });
   }
 
+  if(path==="/api/game/abandon" && req.method==="POST") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const result=await env.DB.prepare("DELETE FROM games WHERE id=? AND user_id=?").bind(String(x.gameId||""),u.id).run();
+    return json({ok:true,removed:Boolean(result.meta?.changes)});
+  }
+
   if(path==="/api/dev/open" && req.method==="POST") {
     const admin=await requireUser(req,env,true);
     if(!admin) return json({error:"Solo un administrador puede usar la consola."},403);
