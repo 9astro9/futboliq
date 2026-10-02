@@ -128,7 +128,7 @@ th{color:var(--muted);font-weight:650}
 .owner-color-preview{background:linear-gradient(90deg,#35d399,#f6c453,#7dd3fc,#c084fc,#35d399)!important;background-size:200% 100%;animation:ownerShift 4s linear infinite}
 @keyframes ownerShift{to{background-position:200% 0}}
 .broadcast-live{position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-140%);z-index:80;width:min(680px,calc(100% - 28px));padding:16px 18px;border:1px solid var(--accent);background:linear-gradient(135deg,rgba(13,20,34,.98),rgba(17,24,39,.98));border-radius:16px;box-shadow:0 20px 70px rgba(0,0,0,.48),0 0 25px rgba(53,211,154,.18);transition:transform .28s ease}.broadcast-live.show{transform:translateX(-50%) translateY(0)}.broadcast-live strong{display:block;margin-bottom:4px}.broadcast-live .small{color:var(--muted)}
-.daily-gift{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px;border:1px solid #6f5a18;background:linear-gradient(135deg,#2b230b,#171c22);border-radius:14px;margin:16px 0}.daily-gift-info{display:flex;align-items:center;gap:12px}.daily-gift-icon{font-size:30px}.daily-gift-title{font-weight:900}.daily-gift-desc{font-size:13px;color:var(--muted)}.gift-claimed{opacity:.75}
+.owner-chat{margin-top:18px}.owner-chat-box{height:360px;overflow:auto;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--card2);display:flex;flex-direction:column;gap:9px}.owner-chat-msg{max-width:88%;padding:10px 12px;border:1px solid var(--line);border-radius:13px;background:var(--card)}.owner-chat-msg.owner{align-self:flex-end;border-color:rgba(53,211,154,.45);background:rgba(53,211,154,.08)}.owner-chat-name{font-size:12px;font-weight:900;margin-bottom:3px}.owner-chat-text{white-space:pre-wrap;overflow-wrap:anywhere}.owner-chat-time{font-size:11px;color:var(--muted);margin-top:3px}.owner-chat-compose{display:flex;gap:8px;margin-top:10px}.owner-chat-compose input{flex:1}.owner-chat-readonly{padding:11px 13px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);font-size:13px;margin-top:10px}.daily-gift{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px;border:1px solid #6f5a18;background:linear-gradient(135deg,#2b230b,#171c22);border-radius:14px;margin:16px 0}.daily-gift-info{display:flex;align-items:center;gap:12px}.daily-gift-icon{font-size:30px}.daily-gift-title{font-weight:900}.daily-gift-desc{font-size:13px;color:var(--muted)}.gift-claimed{opacity:.75}
 .notice-modal{position:fixed;inset:0;z-index:50;background:rgba(2,6,12,.72);display:grid;place-items:center;padding:20px}
 .notice-modal.hidden{display:none}
 .notice-box{width:min(520px,100%);background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 25px 80px rgba(0,0,0,.45)}
@@ -193,6 +193,7 @@ th{color:var(--muted);font-weight:650}
       <div class="menu-card" onclick="showView('profileView');loadProfile()"><div class="menu-icon">👤</div><h3>Mi perfil</h3><p>Estadísticas, estilo equipado y progreso.</p></div>
       <div class="menu-card" onclick="showView('shopView');loadShop()"><div class="menu-icon">🛍️</div><h3>Tienda</h3><p>Comprá y equipá estilos para tu perfil.</p></div>
       <div class="menu-card" onclick="showView('rankingView');loadRanking()"><div class="menu-icon">🏆</div><h3>Top global</h3><p>Consultá las mejores puntuaciones.</p></div>
+      <div class="menu-card" onclick="showView('ownerChatView');loadOwnerChat()"><div class="menu-icon">💬</div><h3>Chat del OWNER</h3><p>Leé los mensajes oficiales del OWNER.</p></div>
     </div>
   </section>
 
@@ -208,6 +209,15 @@ th{color:var(--muted);font-weight:650}
       <div id="diff-imposible" class="diff" onclick="setDifficulty('imposible')"><span class="badge impossible">IMPOSIBLE</span><h3>Imposible</h3><p>168 preguntas · 300 puntos por acierto · 25 monedas.</p></div>
       <div id="diff-blassvec" class="diff" onclick="setDifficulty('blassvec')"><span class="badge blassvec">BLASSVEC</span><h3>Blassvec Modo</h3><p>30 preguntas · las más fáciles · 0 puntos.</p></div>
     </div>
+  </section>
+
+  <section id="ownerChatView" class="card panel hidden">
+    <button class="btn back" onclick="goHome()">← Menú</button>
+    <div class="section-head">
+      <div><h2>💬 Chat del OWNER</h2><div class="small muted">Canal oficial. El OWNER puede hablar con todos los jugadores.</div></div>
+    </div>
+    <div id="ownerChatMessages" class="owner-chat-box"></div>
+    <div id="ownerChatComposer"></div>
   </section>
 
   <section id="profileView" class="panel hidden">
@@ -337,7 +347,7 @@ function openSettings(){showView("settingsView")}
 function openPlay(){showView("playView")}
 function openShop(){showView("shopView");loadShop()}
 function showView(id){
-  ["homeView","playView","profileView","shopView","rankingView","settingsView","gameView","devPanel"].forEach(v=>$(v).classList.add("hidden"));
+  ["homeView","playView","profileView","shopView","rankingView","settingsView","gameView","ownerChatView","devPanel"].forEach(v=>$(v).classList.add("hidden"));
   $(id).classList.remove("hidden");
 }
 function goHome(){showView("homeView");updateHome()}
@@ -432,13 +442,86 @@ async function sendGlobalBroadcast(){
   if(!message){status.textContent="Escribí un mensaje.";return}
   btn.disabled=true;status.textContent="Enviando…";
   try{
-    const x=await api("/api/dev/broadcast",{method:"POST",body:JSON.stringify({message})});
+    const x=await api("/api/owner-chat",{method:"POST",body:JSON.stringify({message})};
     broadcastLastId=Math.max(broadcastLastId,Number(x.message?.id)||0);
     input.value="";status.textContent="✅ Enviado a todos.";showGlobalBroadcast(x.message);
     setTimeout(()=>status.textContent="",2500);
   }catch(e){status.textContent=e.message||"No se pudo enviar."}
   finally{btn.disabled=false}
 }
+let ownerChatLastId=0,ownerChatTimer=null;
+
+function renderOwnerChat(messages){
+  const box=$("ownerChatMessages"); if(!box)return;
+  if(!messages.length){
+    box.innerHTML="<div class='muted'>Todavía no hay mensajes del OWNER.</div>";
+    return;
+  }
+  box.innerHTML=messages.map(m=>{
+    const own=user&&Number(m.senderId||0)===Number(user.id);
+    return "<div class='owner-chat-msg"+(own?" owner":"")+"'><div class='owner-chat-name'>👑 "+escapeHtml(m.sender||"OWNER")+"</div><div class='owner-chat-text'>"+escapeHtml(m.message||"")+"</div><div class='owner-chat-time'>"+new Date(m.createdAt).toLocaleString("es-UY")+"</div></div>";
+  }).join("");
+  box.scrollTop=box.scrollHeight;
+}
+
+async function loadOwnerChat(){
+  if(!user)return;
+  try{
+    const x=await api("/api/owner-chat");
+    const msgs=x.messages||[];
+    ownerChatLastId=msgs.reduce((n,m)=>Math.max(n,Number(m.id)||0),0);
+    renderOwnerChat(msgs);
+    const composer=$("ownerChatComposer");
+    if(user.owner){
+      composer.innerHTML="<div class='owner-chat-compose'><input id='ownerChatInput' maxlength='500' placeholder='Escribí un mensaje para todos...'><button class='btn primary' onclick='sendOwnerChat()'>Enviar</button></div><div id='ownerChatStatus' class='small muted' style='margin-top:6px'></div>";
+      $("ownerChatInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendOwnerChat()}});
+    }else{
+      composer.innerHTML="<div class='owner-chat-readonly'>🔒 Solo el OWNER puede escribir en este chat.</div>";
+    }
+    startOwnerChatPolling();
+  }catch(e){$("ownerChatMessages").innerHTML="<div class='muted'>"+escapeHtml(e.message)+"</div>"}
+}
+
+async function pollOwnerChat(){
+  if(!user)return;
+  try{
+    const x=await api("/api/broadcast?after="+encodeURIComponent(ownerChatLastId));
+    const msgs=x.messages||[];
+    if(msgs.length){
+      ownerChatLastId=Math.max(ownerChatLastId,...msgs.map(m=>Number(m.id)||0));
+      const box=$("ownerChatMessages");
+      if(box){
+        const current=Array.from(box.querySelectorAll(".owner-chat-msg")).map(el=>el);
+        // Reload compactly so the full history stays available.
+        const all=await api("/api/owner-chat");
+        renderOwnerChat(all.messages||[]);
+      }
+    }
+  }catch{}
+}
+
+function startOwnerChatPolling(){
+  if(ownerChatTimer)return;
+  ownerChatTimer=setInterval(pollOwnerChat,2500);
+}
+function stopOwnerChatPolling(){
+  if(ownerChatTimer)clearInterval(ownerChatTimer);
+  ownerChatTimer=null;
+}
+async function sendOwnerChat(){
+  if(!user||!user.owner)return;
+  const input=$("ownerChatInput"),status=$("ownerChatStatus");
+  const message=input.value.trim();
+  if(!message){status.textContent="Escribí un mensaje.";return}
+  try{
+    const x=await api("/api/owner-chat",{method:"POST",body:JSON.stringify({message})});
+    input.value="";ownerChatLastId=Math.max(ownerChatLastId,Number(x.message?.id)||0);
+    const all=await api("/api/owner-chat");renderOwnerChat(all.messages||[]);
+    status.textContent="✅ Enviado a todos.";setTimeout(()=>status.textContent="",1800);
+    showGlobalBroadcast(x.message);
+  }catch(e){status.textContent=e.message||"No se pudo enviar."}
+}
+
 function updateHome(){
   if(!user)return;
   $("homeName").innerHTML=nameHtml(user.username||"—",user.nameColor,user.owner);
@@ -554,7 +637,7 @@ async function refreshMe(){
     if(x.user){user=x.user;$("auth").classList.add("hidden");$("app").classList.remove("hidden");updateHome();showView("homeView");loadRanking();loadDailyGift();startGlobalBroadcastPolling();showNotifications(x.notifications)}
   }catch{}
 }
-async function logout(){try{stopGlobalBroadcastPolling();await api("/api/logout",{method:"POST"})}finally{location.reload()}}
+async function logout(){try{stopGlobalBroadcastPolling();stopOwnerChatPolling();await api("/api/logout",{method:"POST"})}finally{location.reload()}}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
 
 function downloadProfilePhoto(){
