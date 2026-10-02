@@ -943,7 +943,7 @@ async function api(req,env) {
   if(path==="/api/live/answer" && req.method==="POST") {
     const u=await requireUser(req,env);
     if(!u)return json({error:"Inicia sesión."},403);
-    await ensureFeatureTables(env); await ensureUserStats(env);
+    await ensureFeatureTables(env); await ensureUserStats(env,u.id);
     let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
     const live=await env.DB.prepare("SELECT * FROM live_questions WHERE id=? AND active=1 LIMIT 1").bind(Number(x.liveId)).first();
     if(!live||Number(live.ends_at)<=Date.now())return json({error:"La pregunta en vivo terminó.",active:false},409);
