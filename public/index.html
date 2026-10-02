@@ -333,7 +333,7 @@ async function answer(i){
     beep(x.correct?720:220);
     if(x.done){
       user.bestScore=Math.max(Number(user.bestScore||0),Number(x.score||0));user.games=Number(user.games||0)+1;
-      $("gameArea").innerHTML="<h2>🏆 Partida terminada</h2><p>Puntuación: <strong>"+x.score+"</strong></p><p>Monedas actuales: <strong>"+Number(user.coins||0).toLocaleString("es-ES")+"</strong></p><div class='actions'><button class='btn primary' onclick='goHome()'>Volver al menú</button><button class='btn' onclick='showView("playView")'>Jugar otra</button></div>";
+      $("gameArea").innerHTML="<h2>🏆 Partida terminada</h2><p>Puntuación: <strong>"+x.score+"</strong></p><p>Monedas actuales: <strong>"+Number(user.coins||0).toLocaleString("es-ES")+"</strong></p><div class='actions'><button class='btn primary' onclick='goHome()'>Volver al menú</button><button class='btn' onclick='showView(\"playView\")'>Jugar otra</button></div>";
       gameId=null;loadRanking();updateHome();
     }else{
       gameIndex++;$("gameNum").textContent=gameIndex;$("gameProgress").style.width=(gameIndex/gameTotal*100)+"%";showQuestion(x.question);
@@ -351,7 +351,7 @@ async function loadProfile(){
     $("profileView").innerHTML="<button class='btn back' onclick='goHome()'>← Menú</button>"+
       "<div class='profile-layout'>"+
       "<div class='card profile-card "+style.cls+"'><div class='profile-banner'></div><div class='profile-avatar'>"+escapeHtml((user.username||"?").slice(0,1).toUpperCase())+"</div><div class='profile-name'>"+escapeHtml(user.username)+"</div><div class='profile-style'>"+style.icon+" "+style.name+"</div><div class='profile-stats'><div class='stat'><span class='small muted'>Récord</span><b>"+Number(user.bestScore||0).toLocaleString("es-ES")+"</b></div><div class='stat'><span class='small muted'>Partidas</span><b>"+Number(user.games||0).toLocaleString("es-ES")+"</b></div><div class='stat'><span class='small muted'>Monedas</span><b>"+Number(user.coins||0).toLocaleString("es-ES")+"</b></div></div></div>"+
-      "<div class='card'><h2>Estilos</h2><p class='muted'>Tu perfil usa <strong>"+style.name+"</strong>. Visitá la tienda para desbloquear más.</p><button class='btn primary' onclick='showView("shopView");loadShop()'>Abrir tienda</button></div>"+
+      "<div class='card'><h2>Estilos</h2><p class='muted'>Tu perfil usa <strong>"+style.name+"</strong>. Visitá la tienda para desbloquear más.</p><button class='btn primary' onclick='showView(\"shopView\");loadShop()'>Abrir tienda</button></div>"+
       "</div>";
   }catch(e){$("profileContent").innerHTML="<p class='muted'>"+escapeHtml(e.message)+"</p>"}
 }
