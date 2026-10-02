@@ -513,6 +513,11 @@ async function api(req,env) {
   if(path==="/api/broadcast" && req.method==="GET") {
     const u=await requireUser(req,env);
     if(!u) return json({error:"Inicia sesión."},403);
+    const history=url.searchParams.get("history")==="1";
+    if(history){
+      const rows=await env.DB.prepare("SELECT id,sender_user_id AS senderId,sender_username AS sender,message,created_at AS createdAt FROM broadcast_messages ORDER BY id DESC LIMIT 50").all();
+      return json({messages:(rows.results||[]).reverse()});
+    }
     const after=Math.max(0,Number(url.searchParams.get("after")||0));
     const rows=await env.DB.prepare("SELECT id,sender_user_id AS senderId,sender_username AS sender,message,created_at AS createdAt FROM broadcast_messages WHERE id>? ORDER BY id ASC LIMIT 20").bind(Number.isSafeInteger(after)?after:0).all();
     return json({messages:rows.results||[]});
@@ -624,6 +629,7 @@ async function api(req,env) {
       const admin=await requireUser(req,env,true);
       const ds=await devSession(req,env);
       if(!admin || !ds) return json({error:"Sesión de desarrollador no autorizada."},403);
+      if(!isOwnerUser(admin,env)) return json({error:"Solo el OWNER puede escribir en el chat."},403);
       let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
       const message=String(x.message||"").trim();
       if(!message) return json({error:"Escribe un mensaje."},400);
