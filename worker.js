@@ -710,6 +710,262 @@ async function api(req,env) {
     return json({messages:rows.results||[]});
   }
 
+  if(path==="/api/progress" && req.method==="GET") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    await ensureUserStats(env,u.id);
+    const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(u.id).first();
+    const a=await env.DB.prepare("SELECT achievement_id AS achievementId,unlocked_at AS unlockedAt FROM achievements WHERE user_id=? ORDER BY unlocked_at DESC").bind(u.id).all();
+    const total=Number(s?.total_answers||0), correct=Number(s?.correct_answers||0);
+    return json({stats:{
+      xp:Number(s?.xp||0),level:levelFromXp(s?.xp||0),totalAnswers:total,correctAnswers:correct,
+      accuracy:total?Math.round(correct/total*100):0,currentStreak:Number(s?.current_streak||0),
+      bestStreak:Number(s?.best_streak||0),dailyStreak:Number(s?.daily_streak||0),
+      bestDailyStreak:Number(s?.best_daily_streak||0),wins:Number(s?.wins||0),
+      weeklyScore:s?.weekly_key===weekKey()?Number(s?.weekly_score||0):0
+    },achievements:a.results||[],defs:FEATURE_ACHIEVEMENTS});
+  }
+
+  if(path==="/api/ranking/weekly" && req.method==="GET") {
+    await ensureFeatureTables(env);
+    const wk=weekKey();
+    const rows=await env.DB.prepare("SELECT u.id,u.username,u.name_color AS nameColor,s.weekly_score AS score,s.wins FROM user_stats s JOIN users u ON u.id=s.user_id WHERE u.status='active' AND s.weekly_key=? ORDER BY s.weekly_score DESC,s.wins DESC,u.id ASC LIMIT 100").bind(wk).all();
+    return json({week:wk,ranking:rows.results||[]});
+  }
+
+  if(path==="/api/achievements" && req.method==="GET") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    const rows=await env.DB.prepare("SELECT achievement_id AS achievementId,unlocked_at AS unlockedAt FROM achievements WHERE user_id=? ORDER BY unlocked_at DESC").bind(u.id).all();
+    return json({defs:FEATURE_ACHIEVEMENTS,unlocked:rows.results||[]});
+  }
+
+  if(path==="/api/daily-challenge" && req.method==="GET") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    await ensureUserStats(env,u.id);
+    const date=new Date().toISOString().slice(0,10);
+    const p=await env.DB.prepare("SELECT * FROM daily_progress WHERE user_id=? AND challenge_date=? LIMIT 1").bind(u.id,date).first();
+    const ids=p?JSON.parse(p.question_ids||"[]"):dailyQuestionIds(date);
+    if(!ids.length) return json({error:"No hay preguntas disponibles."},500);
+    if(!p){
+      const q=QUESTIONS[ids[0]];
+      return json({date,started:false,completed:false,idx:0,score:0,total:ids.length,question:{id:ids[0],category:q[0],q:q[1],options:q[2]}});
+    }
+    const idx=Math.min(Number(p.idx||0),ids.length), q=idx<ids.length?QUESTIONS[ids[idx]]:null;
+    return json({date,started:true,completed:!!p.completed,idx,score:Number(p.score||0),total:ids.length,question:q?{id:ids[idx],category:q[0],q:q[1],options:q[2]}:null});
+  }
+
+  if(path==="/api/daily-challenge/start" && req.method==="POST") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    const date=new Date().toISOString().slice(0,10),ids=dailyQuestionIds(date),now=Date.now();
+    if(!ids.length) return json({error:"No hay preguntas disponibles."},500);
+    await env.DB.prepare("INSERT OR IGNORE INTO daily_progress(user_id,challenge_date,idx,score,question_ids,completed,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)").bind(u.id,date,0,0,JSON.stringify(ids),0,now,now).run();
+    const q=QUESTIONS[ids[0]];
+    return json({date,started:true,completed:false,idx:0,score:0,total:ids.length,question:{id:ids[0],category:q[0],q:q[1],options:q[2]}});
+  }
+
+  if(path==="/api/daily-challenge/answer" && req.method==="POST") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    await ensureUserStats(env,u.id);
+    let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const date=new Date().toISOString().slice(0,10);
+    const p=await env.DB.prepare("SELECT * FROM daily_progress WHERE user_id=? AND challenge_date=? LIMIT 1").bind(u.id,date).first();
+    if(!p)return json({error:"Primero iniciá el desafío diario."},400);
+    if(Number(p.completed))return json({error:"Ya completaste el desafío de hoy.",completed:true,score:Number(p.score||0)},409);
+    const ids=JSON.parse(p.question_ids||"[]"),idx=Number(p.idx||0),q=QUESTIONS[ids[idx]],choice=Number(x.choice);
+    if(!q||!Number.isInteger(choice)||choice<0||choice>=q[2].length)return json({error:"Respuesta inválida."},400);
+    const correct=choice===q[3],points=correct?100:0,next=idx+1,score=Number(p.score||0)+points,now=Date.now();
+    if(next>=ids.length){
+      await env.DB.prepare("UPDATE daily_progress SET idx=?,score=?,completed=1,updated_at=? WHERE user_id=? AND challenge_date=? AND completed=0").bind(next,score,now,u.id,date).run();
+      const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(u.id).first();
+      const yesterday=new Date(Date.parse(date+"T00:00:00Z")-86400000).toISOString().slice(0,10);
+      const dailyStreak=s?.daily_last_date===yesterday?Number(s.daily_streak||0)+1:1;
+      const bestDaily=Math.max(Number(s?.best_daily_streak||0),dailyStreak),wk=weekKey(),xp=Number(s?.xp||0)+(correct?50:10);
+      await env.DB.prepare("UPDATE user_stats SET xp=?,daily_streak=?,best_daily_streak=?,daily_last_date=?,weekly_score=?,weekly_key=?,updated_at=? WHERE user_id=?")
+        .bind(xp,dailyStreak,bestDaily,date,Number(s?.weekly_key||"")===wk?Number(s?.weekly_score||0):0,wk,now,u.id).run();
+      await env.DB.prepare("UPDATE users SET coins=coins+100,updated_at=? WHERE id=?").bind(now,u.id).run();
+      const after=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(u.id).first();
+      await maybeUnlockAchievements(env,u.id,after);
+      const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
+      return json({correct,points,score,done:true,coins:fresh?.coins??0,dailyStreak,bestDailyStreak:bestDaily,level:levelFromXp(xp)});
+    }
+    await env.DB.prepare("UPDATE daily_progress SET idx=?,score=?,updated_at=? WHERE user_id=? AND challenge_date=? AND completed=0").bind(next,score,now,u.id,date).run();
+    const nq=QUESTIONS[ids[next]];
+    return json({correct,points,score,done:false,question:{id:ids[next],category:nq[0],q:nq[1],options:nq[2]}});
+  }
+
+  if(path==="/api/live" && req.method==="GET") {
+    const u=await requireUser(req,env);
+    if(!u)return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    const live=await env.DB.prepare("SELECT * FROM live_questions WHERE active=1 ORDER BY id DESC LIMIT 1").first();
+    if(!live||Number(live.ends_at)<=Date.now())return json({active:false});
+    const answered=await env.DB.prepare("SELECT choice,correct FROM live_answers WHERE live_id=? AND user_id=? LIMIT 1").bind(live.id,u.id).first();
+    const counts=await env.DB.prepare("SELECT COUNT(*) total,COALESCE(SUM(correct),0) correct FROM live_answers WHERE live_id=?").bind(live.id).first();
+    return json({active:true,id:live.id,category:live.category,q:live.question_text,options:JSON.parse(live.options_json),endsAt:Number(live.ends_at),answered:!!answered,correct:answered?!!answered.correct:null,answers:Number(counts?.total||0),correctAnswers:Number(counts?.correct||0)});
+  }
+
+  if(path==="/api/live/answer" && req.method==="POST") {
+    const u=await requireUser(req,env);
+    if(!u)return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env); await ensureUserStats(env);
+    let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const live=await env.DB.prepare("SELECT * FROM live_questions WHERE id=? AND active=1 LIMIT 1").bind(Number(x.liveId)).first();
+    if(!live||Number(live.ends_at)<=Date.now())return json({error:"La pregunta en vivo terminó.",active:false},409);
+    const old=await env.DB.prepare("SELECT 1 FROM live_answers WHERE live_id=? AND user_id=? LIMIT 1").bind(live.id,u.id).first();
+    if(old)return json({error:"Ya respondiste esta pregunta.",answered:true},409);
+    const choice=Number(x.choice),opts=JSON.parse(live.options_json||"[]");
+    if(!Number.isInteger(choice)||choice<0||choice>=opts.length)return json({error:"Respuesta inválida."},400);
+    const correct=choice===Number(live.correct_index),now=Date.now();
+    await env.DB.prepare("INSERT INTO live_answers(live_id,user_id,choice,correct,answered_at) VALUES(?,?,?,?,?)").bind(live.id,u.id,choice,correct?1:0,now).run();
+    if(correct)await env.DB.prepare("UPDATE users SET coins=coins+25,updated_at=? WHERE id=?").bind(now,u.id).run();
+    await updateAnswerStats(env,u.id,correct,correct?25:0);
+    const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
+    return json({ok:true,correct,reward:correct?25:0,coins:fresh?.coins??u.coins});
+  }
+
+  if(path.startsWith("/api/friends")) {
+    const u=await requireUser(req,env);
+    if(!u)return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    if(path==="/api/friends/search"&&req.method==="GET"){
+      const q=String(url.searchParams.get("q")||"").trim();
+      if(q.length<2)return json({users:[]});
+      const rows=await env.DB.prepare("SELECT id,username,best_score AS bestScore,games FROM users WHERE status='active' AND id<>? AND username LIKE ? COLLATE NOCASE ORDER BY username COLLATE NOCASE LIMIT 20").bind(u.id,"%"+q+"%").all();
+      return json({users:rows.results||[]});
+    }
+    if(path==="/api/friends"&&req.method==="GET"){
+      const rows=await env.DB.prepare("SELECT f.user_id,f.friend_id,f.status,f.created_at AS createdAt,u.username FROM friends f JOIN users u ON u.id=CASE WHEN f.user_id=? THEN f.friend_id ELSE f.user_id END WHERE f.user_id=? OR f.friend_id=? ORDER BY f.updated_at DESC LIMIT 100").bind(u.id,u.id,u.id).all();
+      return json({
+        incoming:(rows.results||[]).filter(r=>r.status==="pending"&&Number(r.friend_id)===u.id),
+        outgoing:(rows.results||[]).filter(r=>r.status==="pending"&&Number(r.user_id)===u.id),
+        accepted:(rows.results||[]).filter(r=>r.status==="accepted")
+      });
+    }
+    if(path==="/api/friends/request"&&req.method==="POST"){
+      let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+      const targetId=Number(x.userId);
+      if(!Number.isInteger(targetId)||targetId===u.id)return json({error:"Usuario inválido."},400);
+      const target=await env.DB.prepare("SELECT id,username FROM users WHERE id=? AND status='active'").bind(targetId).first();
+      if(!target)return json({error:"Cuenta no encontrada."},404);
+      const rev=await env.DB.prepare("SELECT * FROM friends WHERE user_id=? AND friend_id=? LIMIT 1").bind(targetId,u.id).first();
+      if(rev?.status==="accepted")return json({error:"Ya son amigos."},409);
+      if(rev?.status==="pending"){
+        await env.DB.prepare("UPDATE friends SET status='accepted',updated_at=? WHERE user_id=? AND friend_id=?").bind(Date.now(),targetId,u.id).run();
+        await env.DB.prepare("INSERT OR REPLACE INTO friends(user_id,friend_id,status,created_at,updated_at) VALUES(?,?,?,?,?)").bind(u.id,targetId,"accepted",rev.created_at,Date.now()).run();
+        return json({ok:true,accepted:true});
+      }
+      const cur=await env.DB.prepare("SELECT status FROM friends WHERE user_id=? AND friend_id=? LIMIT 1").bind(u.id,targetId).first();
+      if(cur?.status==="pending")return json({error:"Solicitud ya enviada."},409);
+      await env.DB.prepare("INSERT INTO friends(user_id,friend_id,status,created_at,updated_at) VALUES(?,?,?,?,?)").bind(u.id,targetId,"pending",Date.now(),Date.now()).run();
+      await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(targetId,"friend_request",u.username+" te envió una solicitud de amistad.",Date.now()).run().catch(()=>{});
+      return json({ok:true});
+    }
+    if(path==="/api/friends/accept"&&req.method==="POST"){
+      let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+      const from=Number(x.userId);
+      const row=await env.DB.prepare("SELECT * FROM friends WHERE user_id=? AND friend_id=? AND status='pending' LIMIT 1").bind(from,u.id).first();
+      if(!row)return json({error:"Solicitud no encontrada."},404);
+      await env.DB.prepare("UPDATE friends SET status='accepted',updated_at=? WHERE user_id=? AND friend_id=?").bind(Date.now(),from,u.id).run();
+      await env.DB.prepare("INSERT OR REPLACE INTO friends(user_id,friend_id,status,created_at,updated_at) VALUES(?,?,?,?,?)").bind(u.id,from,"accepted",row.created_at,Date.now()).run();
+      await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(from,"friend_accept",u.username+" aceptó tu solicitud de amistad.",Date.now()).run().catch(()=>{});
+      return json({ok:true});
+    }
+    return json({error:"No encontrado"},404);
+  }
+
+  if(path==="/api/duels"&&req.method==="GET"){
+    const u=await requireUser(req,env);if(!u)return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    const rows=await env.DB.prepare("SELECT d.id,d.status,d.created_at AS createdAt,d.expires_at AS expiresAt,d.challenger_id,d.opponent_id,d.challenger_score,d.opponent_score,cu.username challenger,ou.username opponent FROM duels d JOIN users cu ON cu.id=d.challenger_id JOIN users ou ON ou.id=d.opponent_id WHERE (d.challenger_id=? OR d.opponent_id=?) AND d.expires_at>? ORDER BY d.created_at DESC LIMIT 30").bind(u.id,u.id,Date.now()).all();
+    return json({duels:rows.results||[]});
+  }
+
+  if(path==="/api/duel/challenge"&&req.method==="POST"){
+    const u=await requireUser(req,env);if(!u)return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const targetId=Number(x.userId),target=await env.DB.prepare("SELECT id,username FROM users WHERE id=? AND status='active'").bind(targetId).first();
+    if(!target||target.id===u.id)return json({error:"Usuario inválido."},400);
+    const existing=await env.DB.prepare("SELECT id FROM duels WHERE status IN ('pending','active') AND ((challenger_id=? AND opponent_id=?) OR (challenger_id=? AND opponent_id=?)) AND expires_at>? LIMIT 1").bind(u.id,targetId,targetId,u.id,Date.now()).first();
+    if(existing)return json({error:"Ya hay un duelo pendiente o activo contra ese jugador."},409);
+    const pool=QUESTION_SETS.dificil||[],ids=[],used=new Set();let seed=(Date.now()^u.id^targetId)>>>0;
+    while(ids.length<10&&ids.length<pool.length){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const id=pool[seed%pool.length];if(!used.has(id)){used.add(id);ids.push(id)}}
+    const id=token(),now=Date.now();
+    await env.DB.prepare("INSERT INTO duels(id,challenger_id,opponent_id,status,question_ids,created_at,expires_at) VALUES(?,?,?,?,?,?,?)").bind(id,u.id,targetId,"pending",JSON.stringify(ids),now,now+86400000).run();
+    await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(targetId,"duel_challenge",u.username+" te desafió a un duelo 1v1.",now).run().catch(()=>{});
+    return json({ok:true,duelId:id});
+  }
+
+  if(path==="/api/duel/accept"&&req.method==="POST"){
+    const u=await requireUser(req,env);if(!u)return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const d=await env.DB.prepare("SELECT id FROM duels WHERE id=? AND opponent_id=? AND status='pending' AND expires_at>? LIMIT 1").bind(String(x.duelId),u.id,Date.now()).first();
+    if(!d)return json({error:"Duelo no encontrado o vencido."},404);
+    await env.DB.prepare("UPDATE duels SET status='active' WHERE id=? AND status='pending'").bind(d.id).run();
+    return json({ok:true});
+  }
+
+  if(path==="/api/duel/decline"&&req.method==="POST"){
+    const u=await requireUser(req,env);if(!u)return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    await env.DB.prepare("UPDATE duels SET status='declined' WHERE id=? AND opponent_id=? AND status='pending'").bind(String(x.duelId),u.id).run();
+    return json({ok:true});
+  }
+
+  const duelMatch=path.match(/^\/api\/duel\/([^/]+)$/);
+  if(duelMatch&&req.method==="GET"){
+    const u=await requireUser(req,env);if(!u)return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    const d=await env.DB.prepare("SELECT d.*,cu.username challenger,ou.username opponent FROM duels d JOIN users cu ON cu.id=d.challenger_id JOIN users ou ON ou.id=d.opponent_id WHERE d.id=? AND (d.challenger_id=? OR d.opponent_id=?) LIMIT 1").bind(duelMatch[1],u.id,u.id).first();
+    if(!d)return json({error:"Duelo no encontrado."},404);
+    const ids=JSON.parse(d.question_ids||"[]"),isCh=Number(d.challenger_id)===u.id,idx=isCh?Number(d.challenger_idx):Number(d.opponent_idx),q=(d.status==="active"&&idx<ids.length)?QUESTIONS[ids[idx]]:null;
+    return json({id:d.id,status:d.status,challenger:d.challenger,opponent:d.opponent,challengerScore:Number(d.challenger_score||0),opponentScore:Number(d.opponent_score||0),idx,total:ids.length,question:q?{id:ids[idx],category:q[0],q:q[1],options:q[2]}:null});
+  }
+
+  const duelAnswer=path.match(/^\/api\/duel\/([^/]+)\/answer$/);
+  if(duelAnswer&&req.method==="POST"){
+    const u=await requireUser(req,env);if(!u)return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);await ensureUserStats(env,u.id);
+    let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const d=await env.DB.prepare("SELECT * FROM duels WHERE id=? AND status='active' AND expires_at>? AND (challenger_id=? OR opponent_id=?) LIMIT 1").bind(duelAnswer[1],Date.now(),u.id,u.id).first();
+    if(!d)return json({error:"Duelo no disponible."},404);
+    const isCh=Number(d.challenger_id)===u.id,idx=isCh?Number(d.challenger_idx):Number(d.opponent_idx),ids=JSON.parse(d.question_ids||"[]"),q=QUESTIONS[ids[idx]],choice=Number(x.choice);
+    if(!q||!Number.isInteger(choice)||choice<0||choice>=q[2].length)return json({error:"Respuesta inválida."},400);
+    const correct=choice===q[3],next=idx+1,now=Date.now();
+    if(isCh)await env.DB.prepare("UPDATE duels SET challenger_idx=?,challenger_score=challenger_score+? WHERE id=? AND challenger_idx=?").bind(next,correct?100:0,d.id,idx).run();
+    else await env.DB.prepare("UPDATE duels SET opponent_idx=?,opponent_score=opponent_score+? WHERE id=? AND opponent_idx=?").bind(next,correct?100:0,d.id,idx).run();
+    await updateAnswerStats(env,u.id,correct,correct?100:0);
+    const fresh=await env.DB.prepare("SELECT * FROM duels WHERE id=?").bind(d.id).first();
+    if(Number(fresh.challenger_idx)>=ids.length&&Number(fresh.opponent_idx)>=ids.length){
+      let winner=0;
+      if(Number(fresh.challenger_score)>Number(fresh.opponent_score))winner=Number(fresh.challenger_id);
+      else if(Number(fresh.opponent_score)>Number(fresh.challenger_score))winner=Number(fresh.opponent_id);
+      await env.DB.prepare("UPDATE duels SET status='completed' WHERE id=?").bind(d.id).run();
+      if(winner){
+        await env.DB.prepare("UPDATE users SET coins=coins+100,updated_at=? WHERE id=?").bind(now,winner).run();
+        await env.DB.prepare("UPDATE user_stats SET wins=wins+1,updated_at=? WHERE user_id=?").bind(now,winner).run();
+        const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(winner).first();
+        await maybeUnlockAchievements(env,winner,s);
+        const loser=winner===Number(fresh.challenger_id)?Number(fresh.opponent_id):Number(fresh.challenger_id);
+        await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(loser,"duel_result","⚔️ El duelo terminó. Ganó "+(winner===Number(fresh.challenger_id)?fresh.challenger:fresh.opponent)+".",now).run().catch(()=>{});
+        await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(winner,"duel_result","🏆 Ganaste el duelo y recibiste 100 monedas.",now).run().catch(()=>{});
+      }
+      return json({correct,done:true,challengerScore:fresh.challenger_score,opponentScore:fresh.opponent_score,winner});
+    }
+    return json({correct,done:false,idx:next});
+  }
+
   if(path==="/api/ranking" && req.method==="GET") {
     const rows=await env.DB.prepare("SELECT username,best_score AS score,games,profile_style AS profileStyle,beta_tester AS betaTester,name_color AS nameColor FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, games DESC, id ASC LIMIT 100").all();
     const ranking=(rows.results||[]).map(r=>({...r,betaTester:!!r.betaTester,owner:isOwnerName(r.username,env)}));
