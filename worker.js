@@ -793,7 +793,16 @@ export default {
     try {
       const url=new URL(req.url);
       if(url.pathname.startsWith("/api/")) return await api(req,env);
-      return env.ASSETS.fetch(req);
+      const assetResponse=await env.ASSETS.fetch(req);
+      const contentType=assetResponse.headers.get("content-type")||"";
+      if(contentType.includes("text/html")){
+        const headers=new Headers(assetResponse.headers);
+        headers.set("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
+        headers.set("Pragma","no-cache");
+        headers.set("Expires","0");
+        return new Response(assetResponse.body,{status:assetResponse.status,statusText:assetResponse.statusText,headers});
+      }
+      return assetResponse;
     } catch(e) {
       console.error("[worker]",e);
       return json({error:"Error interno"},500);
