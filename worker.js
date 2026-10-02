@@ -143,6 +143,13 @@ async function ensureDatabase(env) {
         message TEXT NOT NULL,
         created_at INTEGER NOT NULL
       )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS owner_chat_messages(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_user_id INTEGER NOT NULL,
+        sender_username TEXT NOT NULL,
+        message TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      )`),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_games_user ON games(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_dev_expiry ON dev_sessions(expires_at)"),
@@ -152,6 +159,7 @@ async function ensureDatabase(env) {
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_ranks_user ON user_ranks(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id,read_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_broadcast_created ON broadcast_messages(created_at)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_owner_chat_created ON owner_chat_messages(created_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_daily_gifts_date ON daily_gifts(claim_date)"),
     ]);
 
@@ -292,9 +300,18 @@ async function ensureFeatureTables(env){
   return featureSchemaPromise;
 }
 
+function montevideoDate(date=new Date()){
+  try{
+    const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Montevideo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date);
+    const get=t=>parts.find(p=>p.type===t)?.value;
+    return get("year")+"-"+get("month")+"-"+get("day");
+  }catch{
+    const d=new Date(date),y=d.getUTCFullYear(),m=String(d.getUTCMonth()+1).padStart(2,"0"),day=String(d.getUTCDate()).padStart(2,"0");
+    return y+"-"+m+"-"+day;
+  }
+}
 function weekKey(date=new Date()){
-  const d=new Date(date);
-  const t=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
+  const t=new Date(montevideoDate(date)+"T00:00:00Z");
   const day=t.getUTCDay()||7;
   t.setUTCDate(t.getUTCDate()+4-day);
   const y=t.getUTCFullYear();
@@ -663,68 +680,6 @@ async function api(req,env) {
     await env.DB.prepare("UPDATE users SET name_color=?,updated_at=? WHERE id=?").bind(colorId,Date.now(),u.id).run();
     await log(env,u.id,"name_color_equip",u.id,{colorId});
     return json({ok:true,nameColor:colorId});
-  }if(path==="/api/health" && req.method==="GET") {
-    try {
-      const rows=await env.DB.prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('users','sessions','games','dev_sessions','audit_logs') ORDER BY name"
-      ).all();
-      return json({ok:true,tables:(rows.results||[]).map(r=>r.name)});
-    } catch(e) {
-      console.error("[health]",e);
-      return json({ok:false,error:"D1 no disponible."},500);
-    }
-  }
-
-  if(path==="/api/me" && req.method==="GET")
-    return json({user:await currentUser(req,env)});
-
-  if(path==="/api/register" && req.method==="POST") {
-    if(!limited(req,"register",6,900000)) return json({error:"Demasiados intentos. Prueba más tarde."},429);
-    let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
-    const username=String(x.username||"").trim();
-    const password=String(x.password||"");
-    if(!/^[A-Za-z0-9_]{3,16}$/.test(username)) return json({error:"El usuario debe tener 3-16 caracteres: letras, números o _."},400);
-    if(password.length<8 || password.length>128) return json({error:"La contraseña debe tener entre 8 y 128 caracteres."},400);
-
-    const existing=await env.DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE LIMIT 1").bind(username).first();
-    if(existing) return json({error:"Ese usuario ya existe."},409);
-
-    const salt=randomSalt();
-    const hash=await passwordHash(password,salt,env.PASSWORD_PEPPER||"",10000);
-    const role=env.ADMIN_USERNAME && username.toLowerCase()===String(env.ADMIN_USERNAME).toLowerCase() ? "admin" : "user";
-    const now=Date.now();
-    let created;
-    try {
-      await env.DB.prepare(
-        "INSERT INTO users(username,password_hash,salt,role,status,best_score,games,coins,profile_style,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)"
-      ).bind(username,hash,salt,role,"active",0,0,300,"clasico",now).run();
-      created=await env.DB.prepare(
-        "SELECT id FROM users WHERE username=? COLLATE NOCASE LIMIT 1"
-      ).bind(username).first();
-    } catch(e) {
-      console.error("[register:user]",e);
-      if(String(e?.message||e).toLowerCase().includes("unique")) return json({error:"Ese usuario ya existe."},409);
-      return json({error:"No se pudo crear la cuenta."},500);
-    }
-
-    if(!created?.id) {
-      console.error("[register:user-id] No se pudo recuperar el ID.");
-      return json({error:"No se pudo crear la cuenta."},500);
-    }
-
-    const userId=created.id;
-    await env.DB.prepare("INSERT OR IGNORE INTO user_styles(user_id,style_id,purchased_at) VALUES(?,?,?)").bind(userId,"clasico",now).run();
-    const session=token();
-    try {
-      await env.DB.prepare("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)")
-        .bind(await digest(session),userId,now+604800000).run();
-    } catch(e) {
-      console.error("[register:session]",e);
-      try{await env.DB.prepare("DELETE FROM users WHERE id=?").bind(userId).run()}catch{}
-      return json({error:"La cuenta no pudo iniciar sesión. Revisa la base de datos."},500);
-    }
-
-    return json({user:{id:userId,username,role,status:"active",bestScore:0,games:0,coins:300,profileStyle:"clasico",profileRank:"novato",betaTester:false,owner:isOwnerName(username,env),nameColor:"blanco"}},201,{"Set-Cookie":cookieHeader(req,"f_session",session,604800)});
   }
 
   if(path==="/api/login" && req.method==="POST") {
@@ -765,9 +720,12 @@ async function api(req,env) {
   if(path==="/api/daily-gift" && (req.method==="GET" || req.method==="POST")) {
     const u=await requireUser(req,env);
     if(!u) return json({error:"Inicia sesión."},403);
-    const claimDate=new Date().toISOString().slice(0,10);
+    const claimDate=montevideoDate();
     const gift=await env.DB.prepare("SELECT 1 FROM daily_gifts WHERE user_id=? AND claim_date=? LIMIT 1").bind(u.id,claimDate).first();
-    if(req.method==="GET") return json({claimed:Boolean(gift),coins:u.coins||0,claimDate,multiplier:await getRewardMultiplier(env,u.id)});
+    if(req.method==="GET"){
+      const boost=await getRewardMultiplier(env,u.id);
+      return json({claimed:Boolean(gift),coins:u.coins||0,claimDate,multiplier:boost,amount:150*boost});
+    }
     if(gift) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate,multiplier:await getRewardMultiplier(env,u.id)},409);
     const inserted=await env.DB.prepare("INSERT OR IGNORE INTO daily_gifts(user_id,claim_date,claimed_at) VALUES(?,?,?)").bind(u.id,claimDate,Date.now()).run();
     if(!inserted.meta?.changes) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate},409);
@@ -788,7 +746,7 @@ async function api(req,env) {
     const u=await requireUser(req,env);
     if(!u) return json({error:"Inicia sesión."},403);
     const rows=await env.DB.prepare(
-      "SELECT id,sender_user_id AS senderId,sender_username AS sender,message,created_at AS createdAt FROM broadcast_messages ORDER BY id DESC LIMIT 50"
+      "SELECT id,sender_user_id AS senderId,sender_username AS sender,message,created_at AS createdAt FROM owner_chat_messages ORDER BY id DESC LIMIT 50"
     ).all();
     return json({messages:(rows.results||[]).reverse()});
   }
@@ -803,7 +761,7 @@ async function api(req,env) {
     if(message.length>500) return json({error:"El mensaje no puede superar 500 caracteres."},400);
     const now=Date.now();
     const result=await env.DB.prepare(
-      "INSERT INTO broadcast_messages(sender_user_id,sender_username,message,created_at) VALUES(?,?,?,?)"
+      "INSERT INTO owner_chat_messages(sender_user_id,sender_username,message,created_at) VALUES(?,?,?,?)"
     ).bind(u.id,u.username,message,now).run();
     const id=result.meta?.last_row_id;
     await log(env,u.id,"owner_chat_message",null,{message});
@@ -860,7 +818,7 @@ async function api(req,env) {
     if(!u) return json({error:"Inicia sesión."},403);
     await ensureFeatureTables(env);
     await ensureUserStats(env,u.id);
-    const date=new Date().toISOString().slice(0,10);
+    const date=montevideoDate();
     const p=await env.DB.prepare("SELECT * FROM daily_progress WHERE user_id=? AND challenge_date=? LIMIT 1").bind(u.id,date).first();
     const ids=p?JSON.parse(p.question_ids||"[]"):dailyQuestionIds(date);
     if(!ids.length) return json({error:"No hay preguntas disponibles."},500);
@@ -876,7 +834,7 @@ async function api(req,env) {
     const u=await requireUser(req,env);
     if(!u) return json({error:"Inicia sesión."},403);
     await ensureFeatureTables(env);
-    const date=new Date().toISOString().slice(0,10),ids=dailyQuestionIds(date),now=Date.now();
+    const date=montevideoDate(),ids=dailyQuestionIds(date),now=Date.now();
     if(!ids.length) return json({error:"No hay preguntas disponibles."},500);
     await env.DB.prepare("INSERT OR IGNORE INTO daily_progress(user_id,challenge_date,idx,score,question_ids,completed,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)").bind(u.id,date,0,0,JSON.stringify(ids),0,now,now).run();
     const q=QUESTIONS[ids[0]];
@@ -889,15 +847,23 @@ async function api(req,env) {
     await ensureFeatureTables(env);
     await ensureUserStats(env,u.id);
     let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
-    const date=new Date().toISOString().slice(0,10);
+    const date=montevideoDate();
     const p=await env.DB.prepare("SELECT * FROM daily_progress WHERE user_id=? AND challenge_date=? LIMIT 1").bind(u.id,date).first();
     if(!p)return json({error:"Primero iniciá el desafío diario."},400);
     if(Number(p.completed))return json({error:"Ya completaste el desafío de hoy.",completed:true,score:Number(p.score||0)},409);
     const ids=JSON.parse(p.question_ids||"[]"),idx=Number(p.idx||0),q=QUESTIONS[ids[idx]],choice=Number(x.choice);
     if(!q||!Number.isInteger(choice)||choice<0||choice>=q[2].length)return json({error:"Respuesta inválida."},400);
     const correct=choice===q[3],points=correct?100:0,next=idx+1,score=Number(p.score||0)+points,now=Date.now();
+    let claimed=false;
     if(next>=ids.length){
-      await env.DB.prepare("UPDATE daily_progress SET idx=?,score=?,completed=1,updated_at=? WHERE user_id=? AND challenge_date=? AND completed=0").bind(next,score,now,u.id,date).run();
+      const upd=await env.DB.prepare("UPDATE daily_progress SET idx=?,score=?,completed=1,updated_at=? WHERE user_id=? AND challenge_date=? AND idx=? AND completed=0").bind(next,score,now,u.id,date,idx).run();
+      claimed=!!upd.meta?.changes;
+    }else{
+      const upd=await env.DB.prepare("UPDATE daily_progress SET idx=?,score=?,updated_at=? WHERE user_id=? AND challenge_date=? AND idx=? AND completed=0").bind(next,score,now,u.id,date,idx).run();
+      claimed=!!upd.meta?.changes;
+    }
+    if(!claimed)return json({error:"Esta respuesta ya fue procesada.",alreadyAnswered:true},409);
+    if(next>=ids.length){
       const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(u.id).first();
       const yesterday=new Date(Date.parse(date+"T00:00:00Z")-86400000).toISOString().slice(0,10);
       const dailyStreak=s?.daily_last_date===yesterday?Number(s.daily_streak||0)+1:1;
@@ -910,11 +876,10 @@ async function api(req,env) {
       const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
       return json({correct,points,score,done:true,coins:fresh?.coins??0,dailyStreak,bestDailyStreak:bestDaily,level:levelFromXp(xp),weekendMultiplier:boost});
     }
-    await env.DB.prepare("UPDATE daily_progress SET idx=?,score=?,updated_at=? WHERE user_id=? AND challenge_date=? AND completed=0").bind(next,score,now,u.id,date).run();
     const nq=QUESTIONS[ids[next]];
+    if(!nq)return json({error:"Pregunta siguiente inválida."},500);
     return json({correct,points,score,done:false,question:{id:ids[next],category:nq[0],q:nq[1],options:nq[2]}});
   }
-
   if(path==="/api/live/start" && req.method==="POST") {
     const admin=await requireUser(req,env);
     if(!admin||!isOwnerUser(admin,env))return json({error:"Solo el OWNER puede iniciar una pregunta en vivo."},403);
@@ -1071,30 +1036,41 @@ if(correct)await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHE
     const isCh=Number(d.challenger_id)===u.id,idx=isCh?Number(d.challenger_idx):Number(d.opponent_idx),ids=JSON.parse(d.question_ids||"[]"),q=QUESTIONS[ids[idx]],choice=Number(x.choice);
     if(!q||!Number.isInteger(choice)||choice<0||choice>=q[2].length)return json({error:"Respuesta inválida."},400);
     const correct=choice===q[3],next=idx+1,now=Date.now();
-    if(isCh)await env.DB.prepare("UPDATE duels SET challenger_idx=?,challenger_score=challenger_score+? WHERE id=? AND challenger_idx=?").bind(next,correct?100:0,d.id,idx).run();
-    else await env.DB.prepare("UPDATE duels SET opponent_idx=?,opponent_score=opponent_score+? WHERE id=? AND opponent_idx=?").bind(next,correct?100:0,d.id,idx).run();
-    await updateAnswerStats(env,u.id,correct,correct?100:0);
-    const fresh=await env.DB.prepare("SELECT * FROM duels WHERE id=?").bind(d.id).first();
-    if(Number(fresh.challenger_idx)>=ids.length&&Number(fresh.opponent_idx)>=ids.length){
-      let winner=0;
-      if(Number(fresh.challenger_score)>Number(fresh.opponent_score))winner=Number(fresh.challenger_id);
-      else if(Number(fresh.opponent_score)>Number(fresh.challenger_score))winner=Number(fresh.opponent_id);
-      await env.DB.prepare("UPDATE duels SET status='completed' WHERE id=?").bind(d.id).run();
-      if(winner){
-        const boost=await getRewardMultiplier(env,winner);
-await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(100*boost,now,winner).run();
-        await env.DB.prepare("UPDATE user_stats SET wins=wins+1,updated_at=? WHERE user_id=?").bind(now,winner).run();
-        const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(winner).first();
-        await maybeUnlockAchievements(env,winner,s);
-        const loser=winner===Number(fresh.challenger_id)?Number(fresh.opponent_id):Number(fresh.challenger_id);
-        await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(loser,"duel_result","⚔️ El duelo terminó. Ganó "+(winner===Number(fresh.challenger_id)?fresh.challenger:fresh.opponent)+".",now).run().catch(()=>{});
-        await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(winner,"duel_result","🏆 Ganaste el duelo y recibiste "+(100*await getRewardMultiplier(env,winner))+" monedas.",now).run().catch(()=>{});
-      }
-      return json({correct,done:true,challengerScore:fresh.challenger_score,opponentScore:fresh.opponent_score,winner});
-    }
-    return json({correct,done:false,idx:next});
+     let claimed=false;
+     if(isCh){
+       const upd=await env.DB.prepare("UPDATE duels SET challenger_idx=?,challenger_score=challenger_score+? WHERE id=? AND status='active' AND challenger_idx=?").bind(next,correct?100:0,d.id,idx).run();
+       claimed=!!upd.meta?.changes;
+     }else{
+       const upd=await env.DB.prepare("UPDATE duels SET opponent_idx=?,opponent_score=opponent_score+? WHERE id=? AND status='active' AND opponent_idx=?").bind(next,correct?100:0,d.id,idx).run();
+       claimed=!!upd.meta?.changes;
+     }
+     if(!claimed)return json({error:"Esta respuesta ya fue procesada.",alreadyAnswered:true},409);
+     await updateAnswerStats(env,u.id,correct,correct?100:0);
+     const fresh=await env.DB.prepare("SELECT * FROM duels WHERE id=?").bind(d.id).first();
+     if(Number(fresh.challenger_idx)>=ids.length&&Number(fresh.opponent_idx)>=ids.length){
+       const complete=await env.DB.prepare("UPDATE duels SET status='completed' WHERE id=? AND status='active'").bind(d.id).run();
+       if(complete.meta?.changes){
+         let winner=0;
+         if(Number(fresh.challenger_score)>Number(fresh.opponent_score))winner=Number(fresh.challenger_id);
+         else if(Number(fresh.opponent_score)>Number(fresh.challenger_score))winner=Number(fresh.opponent_id);
+         if(winner){
+           const boost=await getRewardMultiplier(env,winner);
+           await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(100*boost,now,winner).run();
+           await env.DB.prepare("UPDATE user_stats SET wins=wins+1,updated_at=? WHERE user_id=?").bind(now,winner).run();
+           const s=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(winner).first();
+           await maybeUnlockAchievements(env,winner,s);
+           const loser=winner===Number(fresh.challenger_id)?Number(fresh.opponent_id):Number(fresh.challenger_id);
+           await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(loser,"duel_result","⚔️ El duelo terminó. Ganó "+(winner===Number(fresh.challenger_id)?fresh.challenger:fresh.opponent)+".",now).run().catch(()=>{});
+           await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(winner,"duel_result","🏆 Ganaste el duelo y recibiste "+(100*boost)+" monedas.",now).run().catch(()=>{});
+         }
+         return json({correct,done:true,challengerScore:fresh.challenger_score,opponentScore:fresh.opponent_score,winner});
+       }
+       const after=await env.DB.prepare("SELECT * FROM duels WHERE id=?").bind(d.id).first();
+       const winner=Number(after?.challenger_score||0)>Number(after?.opponent_score||0)?Number(after.challenger_id):Number(after?.opponent_score||0)>Number(after?.challenger_score||0)?Number(after.opponent_id):0;
+       return json({correct,done:true,challengerScore:after?.challenger_score||0,opponentScore:after?.opponent_score||0,winner});
+     }
+     return json({correct,done:false,idx:next});
   }
-
   if(path==="/api/ranking" && req.method==="GET") {
     const rows=await env.DB.prepare("SELECT username,best_score AS score,games,profile_style AS profileStyle,profile_rank AS profileRank,beta_tester AS betaTester,name_color AS nameColor FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, games DESC, id ASC LIMIT 100").all();
     const ranking=(rows.results||[]).map(r=>({...r,betaTester:!!r.betaTester,owner:isOwnerName(r.username,env)}));
@@ -1145,35 +1121,33 @@ await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").b
     const coinGain=correct?meta.coins:0;
     const score=game.score+points;
     const next=game.idx+1;
-    let totalCoins=null;
+    const now=Date.now();
+    let claimed=false;
+    if(next>=ids.length){
+      const del=await env.DB.prepare("DELETE FROM games WHERE id=? AND user_id=? AND idx=?").bind(game.id,u.id,game.idx).run();
+      claimed=!!del.meta?.changes;
+    }else{
+      const upd=await env.DB.prepare("UPDATE games SET idx=?,score=? WHERE id=? AND user_id=? AND idx=?").bind(next,score,game.id,u.id,game.idx).run();
+      claimed=!!upd.meta?.changes;
+    }
+    if(!claimed)return json({error:"Esta respuesta ya fue procesada.",alreadyAnswered:true},409);
     await updateAnswerStats(env,u.id,correct,points);
-
-    if(correct) {
+    if(correct){
       const bonus=next>=ids.length?50:0;
       const rewardMultiplier=await getRewardMultiplier(env,u.id);
       const awardedCoins=(coinGain+bonus)*rewardMultiplier;
-      await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(awardedCoins,Date.now(),u.id).run();
-      totalCoins=(u.coins||0)+awardedCoins;
+      await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(awardedCoins,now,u.id).run();
     }
-
-    if(next>=ids.length) {
-      await env.DB.batch([
-        env.DB.prepare("UPDATE users SET games=games+1,best_score=MAX(best_score,?),updated_at=? WHERE id=?").bind(score,Date.now(),u.id),
-        env.DB.prepare("DELETE FROM games WHERE id=?").bind(game.id)
-      ]);
-      const fresh=await env.DB.prepare("SELECT coins,profile_style AS profileStyle FROM users WHERE id=?").bind(u.id).first();
-      return json({correct,points,score,done:true,coins:fresh?.coins??totalCoins,difficulty:game.difficulty});
+    const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
+    const totalCoins=fresh?.coins??u.coins;
+    if(next>=ids.length){
+      await env.DB.prepare("UPDATE users SET games=games+1,best_score=MAX(best_score,?),updated_at=? WHERE id=?").bind(score,now,u.id).run();
+      return json({correct,points,score,done:true,coins:totalCoins,difficulty:game.difficulty});
     }
-
-    await env.DB.prepare("UPDATE games SET idx=?,score=? WHERE id=?").bind(next,score,game.id).run();
     const nextQ=QUESTIONS[ids[next]];
-    return json({
-      correct,points,score,done:false,coins:totalCoins??u.coins,
-      difficulty:game.difficulty,
-      question:{id:ids[next],category:nextQ[0],q:nextQ[1],options:nextQ[2]}
-    });
+    if(!nextQ)return json({error:"Pregunta siguiente inválida."},500);
+    return json({correct,points,score,done:false,coins:totalCoins,difficulty:game.difficulty,question:{id:ids[next],category:nextQ[0],q:nextQ[1],options:nextQ[2]}});
   }
-
   if(path==="/api/game/abandon" && req.method==="POST") {
     const u=await requireUser(req,env);
     if(!u) return json({error:"Inicia sesión."},403);
@@ -1199,22 +1173,6 @@ await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").b
     const admin=await requireUser(req,env,true);
     const ds=await devSession(req,env);
     if(!admin || !ds) return json({error:"Sesión de desarrollador no autorizada."},403);
-
-    if(path==="/api/dev/live/start" && req.method==="POST") {
-      const admin=await requireUser(req,env,true);
-      const ds=await devSession(req,env);
-      if(!admin||!ds)return json({error:"Sesión de desarrollador no autorizada."},403);
-      if(!isOwnerUser(admin,env))return json({error:"Solo el OWNER puede iniciar una pregunta en vivo."},403);
-      await ensureFeatureTables(env);
-      const pool=QUESTION_SETS.dificil||[];
-      if(!pool.length)return json({error:"No hay preguntas normales disponibles."},500);
-      const qid=pool[Math.floor(Math.random()*pool.length)],q=QUESTIONS[qid],now=Date.now(),ends=now+20000;
-      await env.DB.prepare("UPDATE live_questions SET active=0 WHERE active=1").run();
-      const result=await env.DB.prepare("INSERT INTO live_questions(question_id,category,question_text,options_json,correct_index,active,starts_at,ends_at) VALUES(?,?,?,?,?,?,?,?)")
-        .bind(qid,q[0],q[1],JSON.stringify(q[2]),q[3],1,now,ends).run();
-      await log(env,admin.id,"live_question_start",null,{liveId:result.meta?.last_row_id,questionId:qid});
-      return json({ok:true,liveId:result.meta?.last_row_id,endsAt:ends});
-    }
 
     if(path==="/api/dev/reward-multiplier" && (req.method==="GET" || req.method==="POST")) {
       const admin=await requireUser(req,env,true);
