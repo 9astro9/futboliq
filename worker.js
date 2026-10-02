@@ -118,6 +118,18 @@ async function api(req,env) {
   if(path==="/api/config" && req.method==="GET")
     return json({turnstileSiteKey:env.TURNSTILE_SITEKEY||"",questionCount:PUBLIC_QUESTIONS.length});
 
+  if(path==="/api/health" && req.method==="GET") {
+    try {
+      const rows=await env.DB.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('users','sessions','games','dev_sessions','audit_logs') ORDER BY name"
+      ).all();
+      return json({ok:true,tables:(rows.results||[]).map(r=>r.name)});
+    } catch(e) {
+      console.error("[health]",e);
+      return json({ok:false,error:"D1 no disponible."},500);
+    }
+  }
+
   if(path==="/api/me" && req.method==="GET")
     return json({user:await currentUser(req,env)});
 
@@ -137,14 +149,36 @@ async function api(req,env) {
     const hash=await passwordHash(password,salt,env.PASSWORD_PEPPER||"");
     const role=env.ADMIN_USERNAME && username.toLowerCase()===String(env.ADMIN_USERNAME).toLowerCase() ? "admin" : "user";
     const now=Date.now();
-    const result=await env.DB.prepare(
-      "INSERT INTO users(username,password_hash,salt,role,status,best_score,games,created_at) VALUES(?,?,?,?,?,?,?,?)"
-    ).bind(username,hash,salt,role,"active",0,0,now).run();
+    let created;
+    try {
+      await env.DB.prepare(
+        "INSERT INTO users(username,password_hash,salt,role,status,best_score,games,created_at) VALUES(?,?,?,?,?,?,?,?)"
+      ).bind(username,hash,salt,role,"active",0,0,now).run();
+      created=await env.DB.prepare(
+        "SELECT id FROM users WHERE username=? COLLATE NOCASE LIMIT 1"
+      ).bind(username).first();
+    } catch(e) {
+      console.error("[register:user]",e);
+      if(String(e?.message||e).toLowerCase().includes("unique")) return json({error:"Ese usuario ya existe."},409);
+      return json({error:"No se pudo crear la cuenta."},500);
+    }
 
-    const userId=result.meta.last_row_id;
+    if(!created?.id) {
+      console.error("[register:user-id] No se pudo recuperar el ID.");
+      return json({error:"No se pudo crear la cuenta."},500);
+    }
+
+    const userId=created.id;
     const session=token();
-    await env.DB.prepare("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)")
-      .bind(await digest(session),userId,now+604800000).run();
+    try {
+      await env.DB.prepare("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)")
+        .bind(await digest(session),userId,now+604800000).run();
+    } catch(e) {
+      console.error("[register:session]",e);
+      try{await env.DB.prepare("DELETE FROM users WHERE id=?").bind(userId).run()}catch{}
+      return json({error:"La cuenta no pudo iniciar sesión. Revisa la base de datos."},500);
+    }
+
     return json({user:{id:userId,username,role,status:"active",bestScore:0,games:0}},201,{"Set-Cookie":cookieHeader(req,"f_session",session,604800)});
   }
 
@@ -161,8 +195,13 @@ async function api(req,env) {
     if(candidate!==row.password_hash) return json({error:"Usuario o contraseña incorrectos."},401);
 
     const session=token();
-    await env.DB.prepare("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)")
-      .bind(await digest(session),row.id,Date.now()+604800000).run();
+    try {
+      await env.DB.prepare("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)")
+        .bind(await digest(session),row.id,Date.now()+604800000).run();
+    } catch(e) {
+      console.error("[login:session]",e);
+      return json({error:"No se pudo iniciar la sesión. Revisa la base de datos."},500);
+    }
     return json({user:{id:row.id,username:row.username,role:row.role,status:row.status,bestScore:row.best_score,games:row.games}},200,{"Set-Cookie":cookieHeader(req,"f_session",session,604800)});
   }
 
@@ -304,7 +343,8 @@ export default {
       const url=new URL(req.url);
       if(url.pathname.startsWith("/api/")) return await api(req,env);
       return env.ASSETS.fetch(req);
-    } catch {
+    } catch(e) {
+      console.error("[worker]",e);
       return json({error:"Error interno"},500);
     }
   }
