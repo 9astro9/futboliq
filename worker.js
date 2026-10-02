@@ -514,7 +514,7 @@ async function api(req,env) {
     const u=await requireUser(req,env);
     if(!u) return json({error:"Inicia sesión."},403);
     const rows=await env.DB.prepare(
-      "SELECT id,sender_username AS sender,message,created_at AS createdAt FROM broadcast_messages ORDER BY id DESC LIMIT 100"
+      "SELECT id,sender_user_id AS senderId,sender_username AS sender,message,created_at AS createdAt FROM broadcast_messages ORDER BY id DESC LIMIT 100"
     ).all();
     return json({messages:(rows.results||[]).reverse()});
   }
@@ -540,7 +540,7 @@ async function api(req,env) {
     const u=await requireUser(req,env);
     if(!u) return json({error:"Inicia sesión."},403);
     const after=Math.max(0,Number(url.searchParams.get("after")||0));
-    const rows=await env.DB.prepare("SELECT id,sender_username AS sender,message,created_at AS createdAt FROM broadcast_messages WHERE id>? ORDER BY id ASC LIMIT 20").bind(Number.isSafeInteger(after)?after:0).all();
+    const rows=await env.DB.prepare("SELECT id,sender_user_id AS senderId,sender_username AS sender,message,created_at AS createdAt FROM broadcast_messages WHERE id>? ORDER BY id ASC LIMIT 20").bind(Number.isSafeInteger(after)?after:0).all();
     return json({messages:rows.results||[]});
   }
 
