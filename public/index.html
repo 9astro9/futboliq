@@ -114,6 +114,11 @@ th{color:var(--muted);font-weight:650}
 .owner-name{font-weight:950;letter-spacing:.01em;text-shadow:0 0 10px rgba(53,211,154,.75),0 0 22px rgba(53,211,154,.4)}
 .badge-owner{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:linear-gradient(90deg,#35d39a,#7ff0bf);color:#06130e;font-size:11px;font-weight:950;margin-left:6px}
 .badge-beta{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:linear-gradient(90deg,#f6c453,#fff0a6);color:#281b03;font-size:11px;font-weight:950;margin-left:6px}
+.rank-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:950;margin-left:6px;border:1px solid var(--line);background:var(--card2)}
+.rank-novato{color:#cbd5e1}.rank-amateur{color:#d9a46a}.rank-profesional{color:#d8dee7}.rank-elite{color:#ffd86a}.rank-leyenda{color:#f6c453;text-shadow:0 0 8px rgba(246,196,83,.3)}.rank-idolo{color:#df9cff;text-shadow:0 0 8px rgba(223,156,255,.3)}.rank-vip{color:#67e8f9;background:linear-gradient(90deg,rgba(103,232,249,.12),rgba(192,132,252,.16));border-color:rgba(103,232,249,.45);box-shadow:0 0 12px rgba(103,232,249,.16)}
+.badge-vip{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:linear-gradient(90deg,#67e8f9,#c084fc);color:#081018;font-size:10px;font-weight:950;vertical-align:middle}
+.rank-preview{height:82px;border-radius:12px;display:grid;place-items:center;font-size:42px;margin-bottom:12px;background:var(--card2);border:1px solid var(--line)}
+.rank-card.rank-amateur .rank-preview{background:linear-gradient(135deg,#3b2a1a,#8b5e34)}.rank-card.rank-profesional .rank-preview{background:linear-gradient(135deg,#26313d,#9ba8b5)}.rank-card.rank-elite .rank-preview{background:linear-gradient(135deg,#3d2c00,#f6c453)}.rank-card.rank-leyenda .rank-preview{background:linear-gradient(135deg,#153b2f,#f6c453)}.rank-card.rank-idolo .rank-preview{background:linear-gradient(135deg,#2a1240,#c084fc)}.rank-card.rank-vip .rank-preview{background:linear-gradient(135deg,#062d3b,#7dd3fc,#c084fc);box-shadow:0 0 18px rgba(103,232,249,.18)}
 .football-bg{position:fixed;inset:0;z-index:0;display:grid;grid-template-columns:repeat(4,1fr);pointer-events:none;overflow:hidden;background:#050811}
 .football-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(3,7,15,.84),rgba(3,7,15,.50),rgba(3,7,15,.58),rgba(3,7,15,.86)),linear-gradient(180deg,rgba(3,7,15,.10),rgba(3,7,15,.86))}
 .football-player{min-width:0;background-position:center;background-size:cover;filter:saturate(.82) contrast(1.05);opacity:.33}
@@ -306,6 +311,15 @@ const STYLES={
   cosmico:{name:"Cósmico",icon:"🌌",cls:"style-cosmico"},
   mundial:{name:"Mundial",icon:"🏆",cls:"style-mundial"}
 };
+const RANKS={
+  novato:{name:"Novato",icon:"⚽",cls:"rank-novato",vip:false},
+  amateur:{name:"Amateur",icon:"🥉",cls:"rank-amateur",vip:false},
+  profesional:{name:"Profesional",icon:"🥈",cls:"rank-profesional",vip:false},
+  elite:{name:"Élite",icon:"🥇",cls:"rank-elite",vip:false},
+  leyenda:{name:"Leyenda",icon:"🏆",cls:"rank-leyenda",vip:false},
+  idolo:{name:"Ídolo",icon:"👑",cls:"rank-idolo",vip:false},
+  vip:{name:"VIP",icon:"💎",cls:"rank-vip",vip:true}
+};
 const NAME_COLORS={
   blanco:{name:"Blanco",color:"#f5f7fb"},
   azul:{name:"Azul",color:"#60a5fa"},
@@ -325,6 +339,10 @@ function nameHtml(name,colorId,owner){
   const c=nameStyle(colorId,owner);
   const style=c.gradient?"--name-gradient:"+c.gradient:"color:"+(c.color||"#f5f7fb");
   return "<span class='"+(c.gradient?"name-gradient":"name-solid")+"' style='"+style+"'>"+escapeHtml(name)+"</span>";
+}
+function rankHtml(rankId){
+  const r=RANKS[rankId]||RANKS.novato;
+  return "<span class='rank-badge "+r.cls+"'>"+r.icon+" "+escapeHtml(r.name)+(r.vip?" · x2":"")+"</span>";
 }
 function showNotifications(notifications){
   if(!notifications||!notifications.length)return;
@@ -553,7 +571,7 @@ async function sendOwnerChat(){
 
 function updateHome(){
   if(!user)return;
-  $("homeName").innerHTML=nameHtml(user.username||"—",user.nameColor,user.owner);
+  $("homeName").innerHTML=nameHtml(user.username||"—",user.nameColor,user.owner)+" "+rankHtml(user.profileRank);
   $("homeScore").textContent=Number(user.bestScore||0).toLocaleString("es-ES");
   $("homeCoins").textContent=Number(user.coins||0).toLocaleString("es-ES");
   $("homeGames").textContent=Number(user.games||0).toLocaleString("es-ES");
@@ -604,10 +622,11 @@ async function loadProfile(){
     const ownerBadge=user.owner?"<span class='badge-owner'>OWNER</span>":"";
     const betaBadge=user.betaTester?"<span class='badge-beta'>BETA TESTER</span>":"";
     const colorName=(NAME_COLORS[user.nameColor]||NAME_COLORS.blanco).name;
+    const rank=RANKS[user.profileRank]||RANKS.novato;
     $("profileView").innerHTML="<button class='btn back' onclick='goHome()'>← Menú</button>"+
       "<div class='profile-layout'>"+
-      "<div class='card profile-card "+style.cls+"'><div class='profile-banner'></div><div class='profile-avatar'>"+escapeHtml((user.username||"?").slice(0,1).toUpperCase())+"</div><div class='profile-name'>"+nameHtml(user.username,user.nameColor,user.owner)+ownerBadge+betaBadge+"</div><div class='profile-style'>"+style.icon+" "+style.name+"</div><div class='profile-stats'><div class='stat'><span class='small muted'>Récord</span><b>"+Number(user.bestScore||0).toLocaleString("es-ES")+"</b></div><div class='stat'><span class='small muted'>Partidas</span><b>"+Number(user.games||0).toLocaleString("es-ES")+"</b></div><div class='stat'><span class='small muted'>Monedas</span><b>"+Number(user.coins||0).toLocaleString("es-ES")+"</b></div></div><div class='actions' style='margin-top:16px'><button class='btn primary' onclick='downloadProfilePhoto()'>📸 Descargar foto de perfil</button></div></div>"+
-      "<div class='card'><h2>Personalización</h2><p class='muted'>Estilo de perfil: <strong>"+style.name+"</strong></p><p class='muted'>Color de nombre: <strong>"+escapeHtml(colorName)+"</strong>"+(user.owner?" · exclusivo OWNER":"")+"</p><button class='btn primary' onclick='showView(&quot;shopView&quot;);loadShop()'>Abrir tienda</button></div>"+
+      "<div class='card profile-card "+style.cls+"'><div class='profile-banner'></div><div class='profile-avatar'>"+escapeHtml((user.username||"?").slice(0,1).toUpperCase())+"</div><div class='profile-name'>"+nameHtml(user.username,user.nameColor,user.owner)+ownerBadge+betaBadge+rankHtml(user.profileRank)+"</div><div class='profile-style'>"+style.icon+" "+style.name+"</div><div class='profile-stats'><div class='stat'><span class='small muted'>Récord</span><b>"+Number(user.bestScore||0).toLocaleString("es-ES")+"</b></div><div class='stat'><span class='small muted'>Partidas</span><b>"+Number(user.games||0).toLocaleString("es-ES")+"</b></div><div class='stat'><span class='small muted'>Monedas</span><b>"+Number(user.coins||0).toLocaleString("es-ES")+"</b></div></div><div class='actions' style='margin-top:16px'><button class='btn primary' onclick='downloadProfilePhoto()'>📸 Descargar foto de perfil</button></div></div>"+
+      "<div class='card'><h2>Personalización</h2><p class='muted'>Estilo de perfil: <strong>"+style.name+"</strong></p><p class='muted'>Rango: <strong>"+rank.icon+" "+escapeHtml(rank.name)+"</strong>"+(rank.vip?" · <strong>2x EXP y monedas</strong>":"")+"</p><p class='muted'>Color de nombre: <strong>"+escapeHtml(colorName)+"</strong>"+(user.owner?" · exclusivo OWNER":"")+"</p><button class='btn primary' onclick='showView(&quot;shopView&quot;);loadShop()'>Abrir tienda</button></div>"+
       "</div>";
   }catch(e){$("profileView").innerHTML="<p class='muted'>"+escapeHtml(e.message)+"</p>"}
 }
@@ -615,6 +634,15 @@ async function loadShop(){
   try{
     const x=await api("/api/shop");
     $("shopCoins").textContent=Number(x.coins||0).toLocaleString("es-ES");
+    const rankCards=(x.ranks||[]).map(r=>{
+      const info=RANKS[r.id]||RANKS.novato;
+      let action="";
+      if(r.equipped) action="<button class='btn' disabled>Equipado</button>";
+      else if(r.owned) action="<button class='btn primary' data-id='"+r.id+"' onclick='equipRank(this.dataset.id)'>Equipar</button>";
+      else action="<button class='btn gold' data-id='"+r.id+"' onclick='buyRank(this.dataset.id)'>Comprar · 🪙 "+Number(r.price).toLocaleString("es-ES")+"</button>";
+      const effect=r.vip?"🚀 x2 EXP + x2 monedas":"🎨 Solo estético";
+      return "<div class='style-card rank-card "+info.cls+"'><div class='rank-preview'>"+info.icon+"</div><h3>"+escapeHtml(info.name)+(r.vip?" <span class='badge-vip'>VIP</span>":"")+"</h3><p>"+escapeHtml(r.desc)+"</p><div class='small rank-effect'>"+effect+"</div><div class='actions'>"+action+" "+(r.owned?"<span class='small muted'>Desbloqueado</span>":"<span class='price'>"+Number(r.price).toLocaleString("es-ES")+" 🪙</span>")+"</div></div>";
+    }).join("");
     const styleCards=(x.styles||[]).map(s=>{
       const st=STYLES[s.id]||STYLES.clasico;
       let action="";
@@ -633,7 +661,7 @@ async function loadShop(){
       return "<div class='style-card'><div class='name-color-preview' style='"+previewStyle+"'>Aa</div><h3>"+escapeHtml(info.name)+"</h3><p>"+escapeHtml(c.desc)+"</p><div class='actions'>"+action+" "+(c.owned?"<span class='small muted'>Desbloqueado</span>":"<span class='price'>"+Number(c.price).toLocaleString("es-ES")+" 🪙</span>")+"</div></div>";
     }).join("");
     const ownerCard=user&&user.owner&&x.ownerNameColor?"<div class='style-card'><div class='name-color-preview owner-color-preview'>OWNER</div><h3>Color OWNER</h3><p>Exclusivo de tu cuenta. Nadie más puede comprarlo.</p><span class='badge-owner'>EXCLUSIVO</span></div>":"";
-    $("shopContent").innerHTML=styleCards+"<div style='grid-column:1/-1;margin-top:8px'><div class='section-head'><div><h2>🎨 Colores de nombre</h2><div class='small muted'>Comprá un color y usalo en tu nombre del ranking y del perfil.</div></div></div></div>"+ownerCard+colorCards;
+    $("shopContent").innerHTML=rankCards+"<div style='grid-column:1/-1;margin-top:8px'><div class='section-head'><div><h2>🏅 Rangos</h2><div class='small muted'>Todos son estéticos salvo VIP, que duplica EXP y monedas de recompensa.</div></div></div></div>"+styleCards+"<div style='grid-column:1/-1;margin-top:8px'><div class='section-head'><div><h2>🎨 Colores de nombre</h2><div class='small muted'>Comprá un color y usalo en tu nombre del ranking y del perfil.</div></div></div></div>"+ownerCard+colorCards;
   }catch(e){$("shopContent").innerHTML="<p class='muted'>"+escapeHtml(e.message)+"</p>"}
 }
 async function buyStyle(id){
@@ -642,6 +670,14 @@ async function buyStyle(id){
 }
 async function equipStyle(id){
   try{const x=await api("/api/shop/equip",{method:"POST",body:JSON.stringify({styleId:id})});user.profileStyle=x.profileStyle;updateHome();await loadShop();await loadProfile();showView("profileView");beep(760)}
+  catch(e){alert(e.message)}
+}
+async function buyRank(id){
+  try{const x=await api("/api/shop/rank/buy",{method:"POST",body:JSON.stringify({rankId:id})});user.coins=x.coins;updateHome();await loadShop();beep(980)}
+  catch(e){alert(e.message)}
+}
+async function equipRank(id){
+  try{const x=await api("/api/shop/rank/equip",{method:"POST",body:JSON.stringify({rankId:id})});user.profileRank=x.profileRank;updateHome();await loadShop();await loadProfile();showView("profileView");beep(820)}
   catch(e){alert(e.message)}
 }
 async function buyNameColor(id){
