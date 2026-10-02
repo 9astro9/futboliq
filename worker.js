@@ -739,11 +739,36 @@ async function api(req,env) {
       const target=await env.DB.prepare("SELECT username FROM users WHERE id=?").bind(id).first();
       if(target && isOwnerName(target.username,env) && ["block","demote"].includes(action))
         return json({error:"El Owner no puede ser bloqueado ni perder el rol de administrador."},403);
-      if(action==="block") await env.DB.prepare("UPDATE users SET status='blocked',updated_at=? WHERE id=?").bind(Date.now(),id).run();
-      if(action==="unblock") await env.DB.prepare("UPDATE users SET status='active',updated_at=? WHERE id=?").bind(Date.now(),id).run();
-      if(action==="reset") await env.DB.prepare("UPDATE users SET best_score=0,games=0,updated_at=? WHERE id=?").bind(Date.now(),id).run();
-      if(action==="promote") await env.DB.prepare("UPDATE users SET role='admin',updated_at=? WHERE id=?").bind(Date.now(),id).run();
-      if(action==="demote") await env.DB.prepare("UPDATE users SET role='user',updated_at=? WHERE id=?").bind(Date.now(),id).run();
+      if(action==="block") {
+        await env.DB.prepare("UPDATE users SET status='blocked',updated_at=? WHERE id=?").bind(Date.now(),id).run();
+      }
+      if(action==="unblock") {
+        await env.DB.prepare("UPDATE users SET status='active',updated_at=? WHERE id=?").bind(Date.now(),id).run();
+      }
+      if(action==="reset") {
+        if(!target) return json({error:"Cuenta no encontrada."},404);
+        if(isOwnerName(target.username,env)) return json({error:"El Owner no puede ser borrado."},403);
+        await env.DB.batch([
+          env.DB.prepare("DELETE FROM games WHERE user_id=?").bind(id),
+          env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(id),
+          env.DB.prepare("DELETE FROM dev_sessions WHERE user_id=?").bind(id),
+          env.DB.prepare("DELETE FROM user_styles WHERE user_id=?").bind(id),
+          env.DB.prepare("DELETE FROM user_name_colors WHERE user_id=?").bind(id),
+          env.DB.prepare("DELETE FROM notifications WHERE user_id=?").bind(id),
+          env.DB.prepare("DELETE FROM daily_gifts WHERE user_id=?").bind(id),
+          env.DB.prepare("DELETE FROM users WHERE id=?").bind(id)
+        ]);
+        await log(env,admin.id,"account_delete",id,{username:target.username});
+        return json({ok:true,deleted:true,username:target.username});
+      }
+      if(action==="promote") {
+        await env.DB.prepare("UPDATE users SET role='admin',updated_at=? WHERE id=?").bind(Date.now(),id).run();
+      }
+      if(action==="demote") {
+        if(id===admin.id) return json({error:"No puedes quitarte tu propio acceso de administrador."},400);
+        if(target && isOwnerName(target.username,env)) return json({error:"El Owner no puede perder el rol de administrador."},403);
+        await env.DB.prepare("UPDATE users SET role='user',updated_at=? WHERE id=?").bind(Date.now(),id).run();
+      }
       await log(env,admin.id,action,id,{});
       return json({ok:true});
     }
