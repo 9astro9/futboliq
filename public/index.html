@@ -205,7 +205,7 @@ th{color:var(--muted);font-weight:650}
     </div>
     <div class="diff-grid">
       <div id="diff-facil" class="diff selected" onclick="setDifficulty('facil')"><span class="badge easy">FÁCIL</span><h3>Fácil</h3><p>168 preguntas · 100 puntos por acierto · 8 monedas.</p></div>
-      <div id="diff-dificil" class="diff" onclick="setDifficulty('dificil')"><span class="badge hard">DIFÍCIL</span><h3>Difícil</h3><p>168 preguntas · 175 puntos por acierto · 14 monedas.</p></div>
+      <div id="diff-dificil" class="diff" onclick="setDifficulty('dificil')"><span class="badge hard">NORMAL</g/span><h3>Normal</h3><p>168 preguntas · 175 puntos por acierto · 14 monedas · mitad Sudamérica / mitad Europa.</p></div>
       <div id="diff-imposible" class="diff" onclick="setDifficulty('imposible')"><span class="badge impossible">IMPOSIBLE</span><h3>Imposible</h3><p>168 preguntas · 300 puntos por acierto · 25 monedas.</p></div>
       <div id="diff-blassvec" class="diff" onclick="setDifficulty('blassvec')"><span class="badge blassvec">BLASSVEC</span><h3>Blassvec Modo</h3><p>30 preguntas · las más fáciles · 0 puntos.</p></div>
     </div>
@@ -533,7 +533,7 @@ function setDifficulty(d){
   selectedDifficulty=d;localStorage.setItem("fql_difficulty",d);
   ["facil","dificil","imposible","blassvec"].forEach(x=>$("diff-"+x).classList.toggle("selected",x===d));
 }
-function difficultyLabel(d){return d==="facil"?"Fácil":d==="dificil"?"Difícil":d==="imposible"?"Imposible":"Blassvec Modo"}
+function difficultyLabel(d){return d==="facil"?"Fácil":d==="dificil"?"Normal":d==="imposible"?"Imposible":"Blassvec Modo"}
 async function startGame(){
   try{
     const x=await api("/api/game",{method:"POST",body:JSON.stringify({difficulty:selectedDifficulty})});
