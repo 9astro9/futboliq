@@ -295,7 +295,7 @@ th{color:var(--muted);font-weight:650}
 
 <script>
 let mode="login",user=null,gameId=null,selectedDifficulty=localStorage.getItem("fql_difficulty")||"facil";
-let gameIndex=1,gameTotal=10;
+let gameIndex=1,gameTotal=10,activeRewardMultiplier=1;
 let sound=localStorage.getItem("fql_sound")!=="off";
 let theme=localStorage.getItem("fql_theme")||"dark";
 let lang=localStorage.getItem("fql_lang")||"es";
@@ -436,7 +436,7 @@ async function loadDailyGift(){
     if(x.multiplier!==undefined&&typeof updateWeekendUIWithMultiplier==="function")updateWeekendUIWithMultiplier(x.multiplier);
     const btn=$("dailyGiftBtn"),status=$("giftStatus"),box=$("dailyGiftBox");
     if(x.claimed){btn.textContent="✅ Ya reclamado";btn.disabled=true;box.classList.add("gift-claimed");status.textContent="Ya cobraste las 150 monedas de hoy. Volvé mañana."}
-    else{btn.disabled=false;box.classList.remove("gift-claimed");btn.textContent=weekendMultiplierUI()===3?"🎁 Reclamar +450":"🎁 Reclamar +150";status.textContent=weekendMultiplierUI()===3?"Reclamá tus 450 monedas de hoy por el x3 del finde.":"Reclamá tus 150 monedas de hoy."}
+    else{const boost=Number(x.multiplier||1);btn.disabled=false;box.classList.remove("gift-claimed");btn.textContent="🎁 Reclamar +"+Math.round(150*boost);status.textContent=boost!==1?"Reclamá tus "+Math.round(150*boost)+" monedas de hoy por el multiplicador x"+boost+".":"Reclamá tus 150 monedas de hoy."}
     if(x.coins!==undefined){user.coins=x.coins;updateHome()}
   }catch{if($("giftStatus"))$("giftStatus").textContent="No se pudo comprobar el regalo diario."}
 }
@@ -446,9 +446,9 @@ async function claimDailyGift(){
   try{
     const x=await api("/api/daily-gift",{method:"POST",body:"{}"});
     user.coins=x.coins;updateHome();
-    btn.textContent="✅ Ya reclamado";$("giftStatus").textContent="¡Recibiste "+(weekendMultiplierUI()===3?"450":"150")+" monedas! Volvé mañana.";beep(980);
+    btn.textContent="✅ Ya reclamado";$("giftStatus").textContent="¡Recibiste "+Number(x.amount||Math.round(150*activeRewardMultiplier)).toLocaleString("es-ES")+" monedas! Volvé mañana.";beep(980);
     $("dailyGiftBox").classList.add("gift-claimed");
-  }catch(e){btn.disabled=false;btn.textContent=weekendMultiplierUI()===3?"🎁 Reclamar +450":"🎁 Reclamar +150";$("giftStatus").textContent=e.message||"No se pudo reclamar el regalo.";beep(220)}
+  }catch(e){btn.disabled=false;btn.textContent="🎁 Reclamar +"+Math.round(150*activeRewardMultiplier);$("giftStatus").textContent=e.message||"No se pudo reclamar el regalo.";beep(220)}
 }
 let broadcastTimer=null,broadcastLastId=0,broadcastStarted=false,broadcastShowing=false;let broadcastLiveDisabled=false;
 function showGlobalBroadcast(m){
@@ -760,6 +760,7 @@ async function resetRewardMultiplier(){
 function updateWeekendUIWithMultiplier(multiplier){
   const banner=$("weekendBoostBanner"),btn=$("dailyGiftBtn");
   const boost=Number(multiplier||1);
+  activeRewardMultiplier=boost;
   if(banner){
     if(boost!==1){
       banner.classList.remove("hidden");
