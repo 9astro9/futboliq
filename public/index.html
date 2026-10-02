@@ -28,8 +28,9 @@
     <button type="button" class="btn primary" id="tabLogin" onclick="switchAuth('login')">Iniciar sesión</button>
     <button type="button" class="btn" id="tabRegister" onclick="switchAuth('register')">Crear cuenta</button>
   </div>
-  <div class="field"><label>Usuario</label><input id="username" maxlength="16" autocomplete="username"></div>
+  <div class="field"><label>Usuario</label><input id="username" maxlength="16" autocomplete="username" spellcheck="false"></div>
   <div class="field"><label>Contraseña</label><input id="password" type="password" maxlength="128" autocomplete="current-password"></div>
+  <div class="field hidden" id="confirmWrap"><label>Repite la contraseña</label><input id="confirmPassword" type="password" maxlength="128" autocomplete="new-password"></div>
   <div id="turnstileBox"></div>
   <button type="button" class="btn primary" style="width:100%" onclick="submitAuth()" id="authBtn">Iniciar sesión</button>
   <div id="authMsg" class="notice muted"></div>
@@ -91,12 +92,13 @@ function api(path,options={}){return fetch(path,{credentials:"same-origin",heade
 function switchAuth(m){
   mode=m;
   const registering=m==="register";
-  $("authTitle").textContent=registering?"Crear cuenta":"Iniciar sesión";
-  $("authBtn").textContent=tr(registering?"register":"login");
+  $("authTitle").textContent=registering?"Crear una cuenta":"Iniciar sesión";
+  $("authBtn").textContent=registering?"Crear mi cuenta":"Entrar";
   $("tabLogin").className="btn"+(!registering?" primary":"");
   $("tabRegister").className="btn"+(registering?" primary":"");
   $("password").autocomplete=registering?"new-password":"current-password";
-  $("authHint").textContent=registering?"Crea una cuenta para guardar tu progreso y entrar al ranking global.":"Inicia sesión para jugar y aparecer en el ranking global.";
+  $("confirmWrap").classList.toggle("hidden",!registering);
+  $("authHint").textContent=registering?"Usa un nombre único de 3 a 16 caracteres.":"Escribe tus datos y pulsa Entrar.";
   $("authMsg").textContent="";
   resetTurnstile();
 }
@@ -130,11 +132,31 @@ function renderTurnstile(){
 }
 function tokenValue(){return window.turnstile && widgetId!==null ? turnstile.getResponse(widgetId):""}
 async function submitAuth(){
-  $("authMsg").textContent="Comprobando…";
+  const username=$("username").value.trim();
+  const password=$("password").value;
+  $("authMsg").textContent="";
+  if(!username){$("authMsg").textContent="Escribe un nombre de usuario.";return}
+  if(mode==="register" && password!==$("confirmPassword").value){$("authMsg").textContent="Las contraseñas no coinciden.";return}
+  const btn=$("authBtn");
+  btn.disabled=true;
+  btn.textContent="Comprobando…";
   try{
-    const x=await api(mode==="login"?"/api/login":"/api/register",{method:"POST",body:JSON.stringify({username:$("username").value,password:$("password").value,turnstileToken:tokenValue()})});
-    user=x.user;$("auth").classList.add("hidden");$("app").classList.remove("hidden");$("playerName").textContent=user.username;startGame();loadRanking();
-  }catch(e){$("authMsg").textContent=e.message;resetTurnstile()}
+    const path=mode==="login"?"/api/login":"/api/register";
+    const x=await api(path,{method:"POST",body:JSON.stringify({username,password,turnstileToken:tokenValue()})});
+    user=x.user;
+    $("auth").classList.add("hidden");
+    $("app").classList.remove("hidden");
+    $("playerName").textContent=user.username;
+    accountUI();
+    startGame();
+    loadRanking();
+  }catch(e){
+    $("authMsg").textContent=e.message;
+    resetTurnstile();
+  }finally{
+    btn.disabled=false;
+    btn.textContent=mode==="register"?"Crear mi cuenta":"Entrar";
+  }
 }
 async function refreshMe(){try{const x=await api("/api/me");user=x.user;if(user){$("playerName").textContent=user.username}}catch{}}
 async function startGame(){
