@@ -229,8 +229,10 @@ async function api(req,env) {
     if(row.status!=="active") return json({error:"Esta cuenta está bloqueada."},403);
     const pepper=env.PASSWORD_PEPPER||"";
     const candidate=await passwordHash(password,row.salt,pepper,50000);
-    const legacy=await passwordHash(password,row.salt,pepper,310000);
-    if(candidate!==row.password_hash && legacy!==row.password_hash) return json({error:"Usuario o contraseña incorrectos."},401);
+    if(candidate!==row.password_hash) {
+      const legacy=await passwordHash(password,row.salt,pepper,310000);
+      if(legacy!==row.password_hash) return json({error:"Usuario o contraseña incorrectos."},401);
+    }
 
     const session=token();
     try {
