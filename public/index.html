@@ -362,8 +362,8 @@ async function loadShop(){
       const st=STYLES[s.id]||STYLES.clasico;
       let action="";
       if(s.equipped) action="<button class='btn' disabled>Equipado</button>";
-      else if(s.owned) action="<button class='btn primary' onclick='equipStyle(""+s.id+"")'>Equipar</button>";
-      else action="<button class='btn gold' onclick='buyStyle(""+s.id+"")'>Comprar · 🪙 "+Number(s.price).toLocaleString("es-ES")+"</button>";
+      else if(s.owned) action="<button class='btn primary' onclick='equipStyle(\""+s.id+"\")'>Equipar</button>";
+      else action="<button class='btn gold' onclick='buyStyle(\""+s.id+"\")'>Comprar · 🪙 "+Number(s.price).toLocaleString("es-ES")+"</button>";
       return "<div class='style-card "+st.cls+"'><div class='style-preview'>"+st.icon+"</div><h3>"+st.name+"</h3><p>"+escapeHtml(s.desc)+"</p><div class='actions'>"+action+" "+(s.owned?"<span class='small muted'>Desbloqueado</span>":"<span class='price'>"+Number(s.price).toLocaleString("es-ES")+" 🪙</span>")+"</div></div>"
     }).join("");
   }catch(e){$("shopContent").innerHTML="<p class='muted'>"+escapeHtml(e.message)+"</p>"}
@@ -412,7 +412,7 @@ async function loadDev(){
 async function devScore(id,delta){if(!confirm((delta>0?"+":"")+delta+" puntos?"))return;try{await api("/api/dev/users/"+id+"/score",{method:"POST",body:JSON.stringify({delta})});await loadDev();await loadRanking()}catch(e){alert(e.message)}}
 async function devSet(id){const score=prompt("Nueva puntuación:");if(score===null)return;try{await api("/api/dev/users/"+id+"/set-score",{method:"POST",body:JSON.stringify({score:Number(score)})});await loadDev();await loadRanking()}catch(e){alert(e.message)}}
 async function devAction(id,action){if(!confirm("¿Confirmar "+action+"?"))return;try{await api("/api/dev/users/"+id+"/"+action,{method:"POST",body:"{}"});await loadDev();await loadRanking()}catch(e){alert(e.message)}}
-async function closeDev(){await api("/api/dev/close",{method:"POST",body:"{}");$("devPanel").classList.add("hidden")}
+async function closeDev(){await api("/api/dev/close",{method:"POST",body:"{}"});$("devPanel").classList.add("hidden")}
 
 let seq="",seqTimer=0;
 window.addEventListener("keydown",e=>{if(e.key.length!==1)return;seq=(seq+e.key.toLowerCase()).slice(-3);clearTimeout(seqTimer);seqTimer=setTimeout(()=>seq="",1200);if(seq==="ftb")devConsole()});
