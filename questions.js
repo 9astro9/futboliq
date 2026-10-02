@@ -145,7 +145,7 @@ const NORMAL_FACTS = [
   {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó la Copa América 2016?",altQuestion:"¿Quién fue campeón de la Copa América Centenario?",thirdQuestion:"¿Qué país ganó la Copa América 2016?",answer:"Chile",cat:"Copa América"},
   {type:"basic",region:"Sudamérica",question:"¿Qué selección organizó y ganó la Copa América 2001?",altQuestion:"¿Qué país fue campeón de la Copa América 2001?",thirdQuestion:"¿Quién ganó el torneo continental de 2001?",answer:"Colombia",cat:"Copa América"},
   {type:"basic",region:"Sudamérica",question:"¿Qué colombiano ganó la Bota de Oro del Mundial 2014?",altQuestion:"¿Quién fue máximo goleador del Mundial 2014?",thirdQuestion:"¿Qué jugador de Colombia marcó más goles en Brasil 2014?",answer:"James Rodríguez",cat:"Bota de Oro"},
-  {type:"basic",region:"Sudamérica",question:"¿Qué uruguayo ganó el Balón de Oro del Mundial 2010?",altQuestion:"¿Quién fue elegido mejor jugador de Sudáfrica 2010?",thirdQuestion:"¿Qué jugador de Uruguay recibió el premio al mejor jugador del Mundial 2010?",answer:"Diego Forlán",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué jugador ganó el Balón de Oro del Mundial 2010?",altQuestion:"¿Quién fue elegido mejor jugador de Sudáfrica 2010?",thirdQuestion:"¿Qué jugador recibió el premio al mejor jugador del Mundial 2010?",answer:"Diego Forlán",cat:"Balón de Oro del Mundial"},
   {type:"basic",region:"Sudamérica",question:"¿Qué jugador argentino marcó tres goles contra Grecia en el Mundial 1994?",altQuestion:"¿Qué delantero hizo un hat-trick ante Grecia en 1994?",thirdQuestion:"¿Quién convirtió tres goles ante Grecia en Estados Unidos 1994?",answer:"Gabriel Batistuta",cat:"Mundiales"},
   {type:"basic",region:"Sudamérica",question:"¿Qué brasileño fue capitán en varios Mundiales y ganó dos Copas del Mundo?",altQuestion:"¿Qué histórico lateral brasileño ganó los Mundiales de 1994 y 2002?",thirdQuestion:"¿Quién fue una figura de Brasil y ganó dos Mundiales?",answer:"Cafú",cat:"Leyendas"},
   {type:"basic",region:"Sudamérica",question:"¿Qué delantero colombiano es conocido como 'El Tigre'?",altQuestion:"¿A qué futbolista colombiano apodan 'El Tigre'?",thirdQuestion:"¿Quién es conocido como 'El Tigre' en Colombia?",answer:"Radamel Falcao",cat:"Leyendas"},
@@ -201,7 +201,7 @@ const NORMAL_FACTS = [
   {type:"basic",region:"Sudamérica",question:"¿Qué club uruguayo ganó tres Copas Libertadores?",altQuestion:"¿Qué equipo de Uruguay suma tres Libertadores?",thirdQuestion:"¿Qué club uruguayo ganó tres veces la máxima copa sudamericana?",answer:"Nacional",cat:"Copa Libertadores"},
   {type:"basic",region:"Sudamérica",question:"¿Quién es el máximo goleador histórico de la Copa Libertadores?",altQuestion:"¿Qué jugador lidera la tabla histórica de goleadores de la Libertadores?",thirdQuestion:"¿Quién marcó más goles en la historia de la Copa Libertadores?",answer:"Alberto Spencer",cat:"Copa Libertadores"},
   {type:"basic",region:"Sudamérica",question:"¿Qué jugador brasileño ganó el Balón de Oro en 2007?",altQuestion:"¿Quién recibió el Balón de Oro de 2007?",thirdQuestion:"¿Qué estrella brasileña ganó el premio en 2007?",answer:"Kaká",cat:"Balón de Oro"},
-  {type:"basic",region:"Sudamérica",question:"¿Qué jugador argentino fue Bota de Oro del Mundial 1994?",altQuestion:"¿Quién fue uno de los grandes goleadores argentinos de Estados Unidos 1994?",thirdQuestion:"¿Qué argentino marcó cuatro goles en el Mundial 1994?",answer:"Gabriel Batistuta",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué jugador argentino marcó cuatro goles en el Mundial 1994?",altQuestion:"¿Qué delantero argentino convirtió cuatro tantos en Estados Unidos 1994?",thirdQuestion:"¿Quién anotó cuatro goles con Argentina en el Mundial 1994?",answer:"Gabriel Batistuta",cat:"Mundiales"},
   {type:"basic",region:"Sudamérica",question:"¿Qué club brasileño ganó la Libertadores 2020?",altQuestion:"¿Quién fue campeón de la Copa Libertadores 2020?",thirdQuestion:"¿Qué equipo brasileño ganó la edición 2020?",answer:"Palmeiras",cat:"Copa Libertadores"},
   {type:"basic",region:"Sudamérica",question:"¿Qué club brasileño ganó la Libertadores 2022?",altQuestion:"¿Quién fue campeón de la Copa Libertadores 2022?",thirdQuestion:"¿Qué equipo ganó la edición 2022?",answer:"Flamengo",cat:"Copa Libertadores"},
   {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó el Mundial de 1962?",altQuestion:"¿Quién fue campeón de Chile 1962?",thirdQuestion:"¿Qué país ganó la Copa del Mundo de 1962?",answer:"Brasil",cat:"Mundiales"},
@@ -285,55 +285,71 @@ const IMPOSSIBLE_FACTS = [
   {player:"Gonçalo Ramos",team:"Portugal",opponent:"Suiza",year:"2022",cat:"Hat-tricks"},
   {player:"Kylian Mbappé",team:"Francia",opponent:"Argentina",year:"2022",cat:"Hat-tricks"},
   {player:"Lionel Messi",team:"Argentina",opponent:"Argelia",year:"2026",cat:"Hat-tricks"},
-  {player:"Jonathan David",team:"Canadá",opponent:"Catar",year:"2026",cat:"Hat-tricks"}
+  {player:"Jonathan David",team:"Canadá",opponent:"Catar",year:"2026",cat:"Hat-tricks"},
+  {player:"Ousmane Dembélé",team:"Francia",opponent:"Noruega",year:"2026",cat:"Hat-tricks"},
+  {player:"Bukayo Saka",team:"Inglaterra",opponent:"Francia",year:"2026",cat:"Hat-tricks"}
 ];
+
+const COUNTRY_ANSWERS=new Set([
+  "Uruguay","Italia","Alemania Occidental","Brasil","Inglaterra","Argentina","Francia","España","Alemania","Croacia",
+  "Portugal","Chile","Colombia","Catar","Países Bajos","Dinamarca","Grecia","Rusia","Canadá","Noruega"
+]);
+const TOURNAMENT_POOL=["Copa Mundial de la FIFA","Copa América","Eurocopa","Copa Libertadores","UEFA Champions League"];
+
+function answerEntity(f){
+  if(f.type==="wcWinner"||f.type==="tournament")return "nation";
+  if(f.type==="legend")return "player";
+  if(f.type==="club")return "club";
+  if(f.type==="rule")return "rule";
+  if(f.cat==="Champions")return "club";
+  if(f.cat==="Copa Libertadores")return /jugador|máximo goleador|tabla histórica|marcó más goles/i.test(f.question||"")?"player":"club";
+  if(f.cat==="Copa América"||f.cat==="Eurocopa")return "nation";
+  if(f.cat==="Balón de Oro"||f.cat==="Balón de Oro del Mundial"||f.cat==="Bota de Oro"||f.cat==="Leyendas"||f.cat==="Hat-tricks")return "player";
+  if(f.cat==="Mundiales")return COUNTRY_ANSWERS.has(f.answer)?"nation":(f.answer==="Copa Mundial de la FIFA"?"tournament":"player");
+  return "general";
+}
+
+function smartQuestion(text,f){
+  const entity=answerEntity(f);
+  if(entity==="player"){
+    return text.replace(/\b(brasileñ[oa]|argentino|argentina|uruguayo|uruguaya|francés|francesa|croata|portugués|portuguesa|inglés|inglesa|italiano|italiana|alem[aá]n|alemana|checo|checa|ucraniano|ucraniana|colombiano|colombiana|chileno|chilena)\b/gi,"").replace(/\s{2,}/g," ");
+  }
+  if(entity==="club"){
+    return text.replace(/\b(español|española|inglés|inglesa|italiano|italiana|alemán|alemana|neerlandés|neerlandesa|uruguayo|uruguaya|argentino|argentina|brasileño|brasileña)\b/gi,"").replace(/\s{2,}/g," ");
+  }
+  return text;
+}
 
 function optionSet(pool,answer,seed){
   const unique=[...new Set(pool)].filter(x=>x!==answer);
   if(unique.length<2) throw new Error("No hay suficientes opciones para una pregunta");
   const a=unique[seed%unique.length];
   let b=unique[(seed+1)%unique.length];
-  if(b===a) b=unique[(seed+2)%unique.length];
-  const values=[answer,a,b];
-  const shift=seed%3;
+  if(b===a)b=unique[(seed+2)%unique.length];
+  const values=[answer,a,b],shift=seed%3;
   const options=[values[shift],values[(shift+1)%3],values[(shift+2)%3]];
   return {options,correct:options.indexOf(answer)};
 }
 
 function expandSimple(facts,difficulty,templates){
-  const pools={};
-  for(const f of facts)(pools[f.type]??=[]).push(f.answer);
+  const allFacts=[...facts];
+  const players=[...new Set(allFacts.filter(f=>answerEntity(f)==="player").map(f=>f.answer))];
+  const clubs=[...new Set(allFacts.filter(f=>answerEntity(f)==="club").map(f=>f.answer))];
+  const nations=[...new Set(allFacts.filter(f=>answerEntity(f)==="nation").map(f=>f.answer))];
+  const rules=[...new Set(allFacts.filter(f=>answerEntity(f)==="rule").map(f=>f.answer))];
   const out=[];
-  facts.forEach((f,i)=>{
+  facts.forEach((fact,i)=>{
+    const entity=answerEntity(fact);
+    const pool=entity==="player"?players:entity==="club"?clubs:entity==="nation"?nations:entity==="rule"?rules:entity==="tournament"?TOURNAMENT_POOL:allFacts.map(f=>f.answer);
     for(let v=0;v<3;v++){
-      const answer=f.answer;
-      const q=templates[f.type][v](f);
-      const set=optionSet(pools[f.type],answer,i+v);
-      out.push([f.cat,q,set.options,set.correct,difficulty]);
+      const answer=fact.answer;
+      const question=smartQuestion(templates[fact.type][v](fact),fact);
+      const set=optionSet(pool,answer,i+v);
+      out.push([fact.cat,question,set.options,set.correct,difficulty]);
     }
   });
   return out;
 }
-
-function expandImpossible(facts){
-  const playerPool=facts.map(f=>f.player);
-  const teamPool=facts.map(f=>f.team);
-  const opponentPool=facts.map(f=>f.opponent);
-  const out=[];
-  facts.forEach((f,i)=>{
-    const a=optionSet(playerPool,f.player,i);
-    out.push([f.cat,`¿Qué jugador hizo un hat-trick contra ${f.opponent} en el Mundial de ${f.year}?`,a.options,a.correct,"imposible"]);
-    const b=optionSet(opponentPool,f.opponent,i+1);
-    out.push([f.cat,`¿Contra qué selección hizo el hat-trick ${f.player} en ${f.year}?`,b.options,b.correct,"imposible"]);
-    const c=optionSet(teamPool,f.team,i+2);
-    out.push([f.cat,`¿Qué selección representaba ${f.player} cuando hizo el hat-trick contra ${f.opponent} en ${f.year}?`,c.options,c.correct,"imposible"]);
-  });
-  return out;
-}
-
-const EASY=expandSimple(EASY_FACTS,"facil",SIMPLE_TEMPLATES);
-const NORMAL=expandSimple(NORMAL_FACTS,"dificil",SIMPLE_TEMPLATES);
-const IMPOSSIBLE=expandImpossible(IMPOSSIBLE_FACTS);
 
 const BLASSVEC = [
   ["Blassvec","¿Qué deporte juega Lionel Messi?",["Fútbol","Tenis","Básquetbol"],0,"blassvec"],
@@ -368,7 +384,7 @@ const BLASSVEC = [
   ["Blassvec","¿Cuántas porterías hay en una cancha de fútbol?",["Dos","Una","Cuatro"],0,"blassvec"]
 ];
 
-if(EASY.length!==168 || NORMAL.length!==300 || IMPOSSIBLE.length!==168 || BLASSVEC.length!==30)
+if(EASY.length!==168 || NORMAL.length!==300 || IMPOSSIBLE.length!==174 || BLASSVEC.length!==30)
   throw new Error(`Banco inválido: fácil=${EASY.length}, normal=${NORMAL.length}, imposible=${IMPOSSIBLE.length}, blassvec=${BLASSVEC.length}`);
 
 export const QUESTIONS=[...EASY,...NORMAL,...IMPOSSIBLE,...BLASSVEC];
