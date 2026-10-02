@@ -21,6 +21,13 @@ const STYLES = [
 const STYLE_BY_ID = new Map(STYLES.map(s=>[s.id,s]));
 const RATE = new Map();
 
+function isOwnerName(username,env){
+  return !!env.ADMIN_USERNAME && String(username||"").toLowerCase()===String(env.ADMIN_USERNAME).toLowerCase();
+}
+function isOwnerUser(user,env){
+  return !!user && isOwnerName(user.username,env);
+}
+
 let schemaReadyPromise=null;
 async function ensureDatabase(env) {
   if(schemaReadyPromise) return schemaReadyPromise;
@@ -37,6 +44,7 @@ async function ensureDatabase(env) {
         games INTEGER NOT NULL DEFAULT 0,
         coins INTEGER NOT NULL DEFAULT 300,
         profile_style TEXT NOT NULL DEFAULT 'clasico',
+        beta_tester INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER
       )`),
@@ -85,6 +93,7 @@ async function ensureDatabase(env) {
     const userCols=new Set((userInfo.results||[]).map(r=>r.name));
     if(!userCols.has("coins")) await env.DB.prepare("ALTER TABLE users ADD COLUMN coins INTEGER NOT NULL DEFAULT 300").run();
     if(!userCols.has("profile_style")) await env.DB.prepare("ALTER TABLE users ADD COLUMN profile_style TEXT NOT NULL DEFAULT 'clasico'").run();
+    if(!userCols.has("beta_tester")) await env.DB.prepare("ALTER TABLE users ADD COLUMN beta_tester INTEGER NOT NULL DEFAULT 0").run();
 
     const gameInfo=await env.DB.prepare("PRAGMA table_info(games)").all();
     const gameCols=new Set((gameInfo.results||[]).map(r=>r.name));
@@ -156,9 +165,13 @@ function limited(req,key,max,windowMs) {
 async function currentUser(req,env) {
   const raw=getCookie(req,"f_session");
   if(!raw) return null;
-  return env.DB.prepare(
-    "SELECT u.id,u.username,u.role,u.status,u.best_score AS bestScore,u.games,u.coins,u.profile_style AS profileStyle FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? LIMIT 1"
+  const u=await env.DB.prepare(
+    "SELECT u.id,u.username,u.role,u.status,u.best_score AS bestScore,u.games,u.coins,u.profile_style AS profileStyle,u.beta_tester AS betaTester FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? LIMIT 1"
   ).bind(await digest(raw),Date.now()).first();
+  if(!u) return null;
+  u.betaTester=!!u.betaTester;
+  u.owner=isOwnerUser(u,env);
+  return u;
 }
 
 async function requireUser(req,env,admin=false) {
@@ -359,8 +372,9 @@ async function api(req,env) {
   }
 
   if(path==="/api/ranking" && req.method==="GET") {
-    const rows=await env.DB.prepare("SELECT username,best_score AS score,games,profile_style AS profileStyle FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, games DESC, id ASC LIMIT 100").all();
-    return json({ranking:rows.results||[]});
+    const rows=await env.DB.prepare("SELECT username,best_score AS score,games,profile_style AS profileStyle,beta_tester AS betaTester FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, games DESC, id ASC LIMIT 100").all();
+    const ranking=(rows.results||[]).map(r=>({...r,betaTester:!!r.betaTester,owner:isOwnerName(r.username,env)}));
+    return json({ranking});
   }
 
   if(path==="/api/game" && req.method==="POST") {
@@ -459,8 +473,9 @@ async function api(req,env) {
     if(!admin || !ds) return json({error:"Sesión de desarrollador no autorizada."},403);
 
     if(path==="/api/dev/users" && req.method==="GET") {
-      const rows=await env.DB.prepare("SELECT id,username,role,status,best_score AS bestScore,games,coins,profile_style AS profileStyle,created_at AS createdAt FROM users ORDER BY id DESC").all();
-      return json({users:rows.results||[]});
+      const rows=await env.DB.prepare("SELECT id,username,role,status,best_score AS bestScore,games,coins,profile_style AS profileStyle,beta_tester AS betaTester,created_at AS createdAt FROM users ORDER BY id DESC").all();
+      const users=(rows.results||[]).map(r=>({...r,betaTester:!!r.betaTester,owner:isOwnerName(r.username,env)}));
+      return json({users,viewerOwner:isOwnerUser(admin,env)});
     }
 
     if(path==="/api/dev/stats" && req.method==="GET") {
@@ -472,6 +487,42 @@ async function api(req,env) {
       return json({users:u?.c||0,activeGames:g?.c||0,activeSessions:s?.c||0});
     }
 
+    const coinMatch=path.match(/^\/api\/dev\/users\/(\d+)\/coins$/);
+    if(coinMatch && req.method==="POST") {
+      if(!isOwnerUser(admin,env)) return json({error:"Solo el Owner puede modificar monedas."},403);
+      let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+      const delta=Number(x.delta);
+      if(!Number.isSafeInteger(delta)||Math.abs(delta)>1000000000) return json({error:"Cantidad de monedas inválida."},400);
+      const id=Number(coinMatch[1]);
+      const target=await env.DB.prepare("SELECT id,username,coins FROM users WHERE id=?").bind(id).first();
+      if(!target) return json({error:"Cuenta no encontrada."},404);
+      await env.DB.prepare("UPDATE users SET coins=MAX(0,coins+?),updated_at=? WHERE id=?").bind(delta,Date.now(),id).run();
+      await log(env,admin.id,"coins_delta",id,{delta});
+      const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(id).first();
+      return json({ok:true,coins:fresh?.coins??0});
+    }
+
+    const betaMatch=path.match(/^\/api\/dev\/users\/(\d+)\/beta-tester$/);
+    if(betaMatch && req.method==="POST") {
+      if(!isOwnerUser(admin,env)) return json({error:"Solo el Owner puede asignar BETA TESTER."},403);
+      const id=Number(betaMatch[1]);
+      if(id===admin.id) return json({error:"El Owner no necesita BETA TESTER."},400);
+      let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+      const enabled=x.enabled===true;
+      const target=await env.DB.prepare("SELECT id,username,beta_tester FROM users WHERE id=?").bind(id).first();
+      if(!target) return json({error:"Cuenta no encontrada."},404);
+      if(enabled===!!target.beta_tester) return json({ok:true,betaTester:!!target.beta_tester,coins:null});
+      if(enabled){
+        await env.DB.prepare("UPDATE users SET beta_tester=1,coins=coins+10000,updated_at=? WHERE id=?").bind(Date.now(),id).run();
+        await log(env,admin.id,"beta_tester_grant",id,{bonusCoins:10000});
+      }else{
+        await env.DB.prepare("UPDATE users SET beta_tester=0,updated_at=? WHERE id=?").bind(Date.now(),id).run();
+        await log(env,admin.id,"beta_tester_revoke",id,{});
+      }
+      const fresh=await env.DB.prepare("SELECT beta_tester AS betaTester,coins FROM users WHERE id=?").bind(id).first();
+      return json({ok:true,betaTester:!!fresh?.betaTester,coins:fresh?.coins??0,bonusCoins:enabled?10000:0});
+    }
+
     const scoreMatch=path.match(/^\/api\/dev\/users\/(\d+)\/score$/);
     if(scoreMatch && req.method==="POST") {
       let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
@@ -480,6 +531,7 @@ async function api(req,env) {
       const id=Number(scoreMatch[1]);
       const row=await env.DB.prepare("SELECT username,best_score FROM users WHERE id=?").bind(id).first();
       if(!row) return json({error:"Cuenta no encontrada."},404);
+      if(isOwnerName(row.username,env) && !isOwnerUser(admin,env)) return json({error:"Solo el Owner puede modificar al Owner."},403);
       await env.DB.prepare("UPDATE users SET best_score=MAX(0,best_score+?),updated_at=? WHERE id=?").bind(delta,Date.now(),id).run();
       await log(env,admin.id,"score_delta",id,{delta});
       return json({ok:true});
@@ -490,6 +542,8 @@ async function api(req,env) {
       let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
       const score=Number(x.score),id=Number(setScore[1]);
       if(!Number.isSafeInteger(score)||score<0||score>1000000000)return json({error:"Puntuación inválida."},400);
+      const target=await env.DB.prepare("SELECT username FROM users WHERE id=?").bind(id).first();
+      if(target && isOwnerName(target.username,env) && !isOwnerUser(admin,env)) return json({error:"Solo el Owner puede modificar al Owner."},403);
       await env.DB.prepare("UPDATE users SET best_score=?,updated_at=? WHERE id=?").bind(score,Date.now(),id).run();
       await log(env,admin.id,"score_set",id,{score});
       return json({ok:true});
@@ -499,6 +553,9 @@ async function api(req,env) {
     if(userAction && req.method==="POST") {
       const id=Number(userAction[1]),action=userAction[2];
       if(id===admin.id && ["block","demote"].includes(action)) return json({error:"No puedes quitarte tu propio acceso de administrador."},400);
+      const target=await env.DB.prepare("SELECT username FROM users WHERE id=?").bind(id).first();
+      if(target && isOwnerName(target.username,env) && ["block","demote"].includes(action))
+        return json({error:"El Owner no puede ser bloqueado ni perder el rol de administrador."},403);
       if(action==="block") await env.DB.prepare("UPDATE users SET status='blocked',updated_at=? WHERE id=?").bind(Date.now(),id).run();
       if(action==="unblock") await env.DB.prepare("UPDATE users SET status='active',updated_at=? WHERE id=?").bind(Date.now(),id).run();
       if(action==="reset") await env.DB.prepare("UPDATE users SET best_score=0,games=0,updated_at=? WHERE id=?").bind(Date.now(),id).run();
