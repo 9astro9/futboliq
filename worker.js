@@ -130,7 +130,7 @@ async function api(req,env) {
     if(password.length<8 || password.length>128) return json({error:"La contraseña debe tener entre 8 y 128 caracteres."},400);
     if(!(await captcha(x.turnstileToken,req,env))) return json({error:"Completa el CAPTCHA."},400);
 
-    const existing=await env.DB.prepare("SELECT id FROM users WHERE username=?").bind(username).first();
+    const existing=await env.DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE LIMIT 1").bind(username).first();
     if(existing) return json({error:"Ese usuario ya existe."},409);
 
     const salt=randomSalt();
@@ -154,8 +154,9 @@ async function api(req,env) {
     const username=String(x.username||"").trim();
     const password=String(x.password||"");
     if(!(await captcha(x.turnstileToken,req,env))) return json({error:"Completa el CAPTCHA."},400);
-    const row=await env.DB.prepare("SELECT * FROM users WHERE username=? LIMIT 1").bind(username).first();
-    if(!row || row.status!=="active") return json({error:"Usuario o contraseña incorrectos."},401);
+    const row=await env.DB.prepare("SELECT * FROM users WHERE username=? COLLATE NOCASE LIMIT 1").bind(username).first();
+    if(!row) return json({error:"La cuenta no existe."},404);
+    if(row.status!=="active") return json({error:"Esta cuenta está bloqueada."},403);
     const candidate=await passwordHash(password,row.salt,env.PASSWORD_PEPPER||"");
     if(candidate!==row.password_hash) return json({error:"Usuario o contraseña incorrectos."},401);
 
