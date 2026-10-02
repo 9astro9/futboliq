@@ -83,15 +83,20 @@ async function requireUser(req,env,admin=false) {
 async function captcha(tokenValue,req,env) {
   if(!env.TURNSTILE_SECRET) return true;
   if(!tokenValue) return false;
-  const form=new FormData();
-  form.append("secret",env.TURNSTILE_SECRET);
-  form.append("response",tokenValue);
-  const ip=req.headers.get("CF-Connecting-IP");
-  if(ip) form.append("remoteip",ip);
-  const r=await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify",{method:"POST",body:form});
-  if(!r.ok) return false;
-  const data=await r.json();
-  return data.success===true;
+  try {
+    const form=new FormData();
+    form.append("secret",env.TURNSTILE_SECRET);
+    form.append("response",tokenValue);
+    const ip=req.headers.get("CF-Connecting-IP");
+    if(ip) form.append("remoteip",ip);
+    const r=await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify",{method:"POST",body:form});
+    if(!r.ok) return false;
+    const data=await r.json();
+    return data.success===true;
+  } catch(e) {
+    console.error("[captcha]",e);
+    return false;
+  }
 }
 
 async function devSession(req,env) {
