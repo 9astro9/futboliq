@@ -802,6 +802,20 @@ async function api(req,env) {
     return json({correct,points,score,done:false,question:{id:ids[next],category:nq[0],q:nq[1],options:nq[2]}});
   }
 
+  if(path==="/api/live/start" && req.method==="POST") {
+    const admin=await requireUser(req,env);
+    if(!admin||!isOwnerUser(admin,env))return json({error:"Solo el OWNER puede iniciar una pregunta en vivo."},403);
+    await ensureFeatureTables(env);
+    const pool=QUESTION_SETS.dificil||[];
+    if(!pool.length)return json({error:"No hay preguntas normales disponibles."},500);
+    const qid=pool[Math.floor(Math.random()*pool.length)],q=QUESTIONS[qid],now=Date.now(),ends=now+20000;
+    await env.DB.prepare("UPDATE live_questions SET active=0 WHERE active=1").run();
+    const result=await env.DB.prepare("INSERT INTO live_questions(question_id,category,question_text,options_json,correct_index,active,starts_at,ends_at) VALUES(?,?,?,?,?,?,?,?)")
+      .bind(qid,q[0],q[1],JSON.stringify(q[2]),q[3],1,now,ends).run();
+    await log(env,admin.id,"live_question_start",null,{liveId:result.meta?.last_row_id,questionId:qid});
+    return json({ok:true,liveId:result.meta?.last_row_id,endsAt:ends});
+  }
+
   if(path==="/api/live" && req.method==="GET") {
     const u=await requireUser(req,env);
     if(!u)return json({error:"Inicia sesión."},403);
