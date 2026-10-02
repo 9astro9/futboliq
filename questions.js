@@ -351,6 +351,10 @@ function expandSimple(facts,difficulty,templates){
   return out;
 }
 
+const EASY=expandSimple(EASY_FACTS,"facil",SIMPLE_TEMPLATES);
+const NORMAL=expandSimple(NORMAL_FACTS,"dificil",SIMPLE_TEMPLATES);
+const IMPOSSIBLE=expandImpossible(IMPOSSIBLE_FACTS);
+
 const BLASSVEC = [
   ["Blassvec","¿Qué deporte juega Lionel Messi?",["Fútbol","Tenis","Básquetbol"],0,"blassvec"],
   ["Blassvec","¿Con qué se juega principalmente al fútbol?",["Pelota","Raqueta","Bate"],0,"blassvec"],
