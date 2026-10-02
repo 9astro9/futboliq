@@ -84,7 +84,7 @@ const token = () => { const a=bytes(); return btoa(String.fromCharCode(...a)).re
 const digest = async text => hex(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(text))));
 const randomSalt = () => token();
 
-async function passwordHash(password,salt,pepper,iterations=50000) {
+async function passwordHash(password,salt,pepper,iterations=10000) {
   const key = await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
     {name:"PBKDF2",salt:new TextEncoder().encode(salt+pepper),iterations,hash:"SHA-256"},
@@ -183,7 +183,7 @@ async function api(req,env) {
     if(existing) return json({error:"Ese usuario ya existe."},409);
 
     const salt=randomSalt();
-    const hash=await passwordHash(password,salt,env.PASSWORD_PEPPER||"",50000);
+    const hash=await passwordHash(password,salt,env.PASSWORD_PEPPER||"",10000);
     const role=env.ADMIN_USERNAME && username.toLowerCase()===String(env.ADMIN_USERNAME).toLowerCase() ? "admin" : "user";
     const now=Date.now();
     let created;
@@ -228,7 +228,7 @@ async function api(req,env) {
     if(!row) return json({error:"La cuenta no existe."},404);
     if(row.status!=="active") return json({error:"Esta cuenta está bloqueada."},403);
     const pepper=env.PASSWORD_PEPPER||"";
-    const candidate=await passwordHash(password,row.salt,pepper,50000);
+    const candidate=await passwordHash(password,row.salt,pepper,10000);
     if(candidate!==row.password_hash) {
       const legacy=await passwordHash(password,row.salt,pepper,310000);
       if(legacy!==row.password_hash) return json({error:"Usuario o contraseña incorrectos."},401);
