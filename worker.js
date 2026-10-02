@@ -510,6 +510,32 @@ async function api(req,env) {
     }
   }
 
+  if(path==="/api/owner-chat" && req.method==="GET") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    const rows=await env.DB.prepare(
+      "SELECT id,sender_username AS sender,message,created_at AS createdAt FROM broadcast_messages ORDER BY id DESC LIMIT 100"
+    ).all();
+    return json({messages:(rows.results||[]).reverse()});
+  }
+
+  if(path==="/api/owner-chat" && req.method==="POST") {
+    const admin=await requireUser(req,env,true);
+    if(!admin || !isOwnerUser(admin,env)) return json({error:"Solo el Owner puede escribir en este chat."},403);
+    if(!limited(req,"owner-chat",30,60000)) return json({error:"Demasiados mensajes. Esperá un momento."},429);
+    let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const message=String(x.message||"").trim();
+    if(!message) return json({error:"Escribí un mensaje."},400);
+    if(message.length>500) return json({error:"El mensaje no puede superar 500 caracteres."},400);
+    const now=Date.now();
+    const result=await env.DB.prepare(
+      "INSERT INTO broadcast_messages(sender_user_id,sender_username,message,created_at) VALUES(?,?,?,?)"
+    ).bind(admin.id,admin.username,message,now).run();
+    const id=result.meta?.last_row_id;
+    await log(env,admin.id,"owner_chat_message",null,{message});
+    return json({ok:true,message:{id,sender:admin.username,message,createdAt:now}});
+  }
+
   if(path==="/api/broadcast" && req.method==="GET") {
     const u=await requireUser(req,env);
     if(!u) return json({error:"Inicia sesión."},403);
