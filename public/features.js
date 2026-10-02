@@ -160,7 +160,7 @@ function renderDailyQuestion(x){
   const box=$("dailyContent");if(!box)return;
   if(x.completed){box.innerHTML=`<div class="card"><h3>✅ Desafío completado</h3><p>Puntuación: <strong>${x.score}</strong></p><p>Volvé mañana para mantener tu racha.</p></div>`;return}
   const q=x.question;if(!q){box.textContent="No hay pregunta.";return}
-  box.innerHTML=`<div class="card"><div class="small muted">${esc(q.category)} · Pregunta ${Number(x.idx)+1}/${x.total}</div><h2 class="question">${esc(q.q)}</h2><div class="feature-answer-grid">${q.options.map((o,i)=>`<button class="btn option" data-daily-choice="${i}">${esc(o)}</button>`).join("")}</div><p class="small muted">Puntos: ${x.score}</p></div>`;
+  box.innerHTML=`<div class="card">${typeof categoryBadge==="function"?categoryBadge(q.category):"<div class='small muted'>"+esc(q.category)+"</div>"}<div class="small muted">Pregunta ${Number(x.idx)+1}/${x.total}</div><h2 class="question">${esc(q.q)}</h2><div class="feature-answer-grid">${q.options.map((o,i)=>`<button class="btn option" data-daily-choice="${i}">${esc(o)}</button>`).join("")}</div><p class="small muted">Puntos: ${x.score}</p></div>`;
   document.querySelectorAll("[data-daily-choice]").forEach(b=>b.onclick=async()=>{
     document.querySelectorAll("[data-daily-choice]").forEach(z=>z.disabled=true);
     try{const y=await api("/api/daily-challenge/answer",{method:"POST",body:JSON.stringify({choice:Number(b.dataset.dailyChoice)})});if(y.done){renderDailyQuestion({completed:true,score:y.score});showGlobalBroadcast({sender:"FUTBOLIQ",message:"¡Desafío diario completado!",createdAt:Date.now()})}else renderDailyQuestion({...y,total:x.total,idx:(x.idx||0)+1})}catch(e){alert(e.message);loadDaily()}
@@ -180,7 +180,7 @@ async function loadLive(){
         return;
       }
       const left=Math.max(0,Math.ceil((Number(x.endsAt)-Date.now())/1000));
-      box.innerHTML=`<div class="card live-card"><div class="small muted">${esc(x.category)}</div><div class="live-timer">00:${String(left).padStart(2,"0")}</div><h2 class="question">${esc(x.q)}</h2>${x.answered?"<div class='notice'>✅ Ya respondiste esta pregunta.</div>":"<div class='feature-answer-grid'>"+x.options.map((o,i)=>"<button class='btn option' data-live-choice='"+i+"'>"+esc(o)+"</button>").join("")+"</div>"}<p class="small muted">Respuestas: ${x.answers||0} · Correctas: ${x.correctAnswers||0}</p></div>`;
+      box.innerHTML=`<div class="card live-card">${typeof categoryBadge==="function"?categoryBadge(x.category):"<div class='small muted'>"+esc(x.category)+"</div>"}<div class="live-timer">00:${String(left).padStart(2,"0")}</div><h2 class="question">${esc(x.q)}</h2>${x.answered?"<div class='notice'>✅ Ya respondiste esta pregunta.</div>":"<div class='feature-answer-grid'>"+x.options.map((o,i)=>"<button class='btn option' data-live-choice='"+i+"'>"+esc(o)+"</button>").join("")+"</div>"}<p class="small muted">Respuestas: ${x.answers||0} · Correctas: ${x.correctAnswers||0}</p></div>`;
       document.querySelectorAll("[data-live-choice]").forEach(b=>b.onclick=async()=>{
         document.querySelectorAll("[data-live-choice]").forEach(z=>z.disabled=true);
         try{const y=await api("/api/live/answer",{method:"POST",body:JSON.stringify({liveId:x.id,choice:Number(b.dataset.liveChoice)})});box.insertAdjacentHTML("beforeend","<p class='notice'>"+(y.correct?"✅ ¡Correcto! +25 🪙":"❌ Incorrecto.")+"</p>");setTimeout(draw,800)}catch(e){alert(e.message);draw()}
@@ -283,7 +283,7 @@ function careerDefault(){
 }
 function migrateCareer(c){
   if(!c)return null;
-  const out={...careerDefault(),...c,version:2};
+  const out={...careerDefault(),...c,version:2};if(isAstro67Career(out)){out.potential=99;out.ovr=Math.max(out.ovr,70);out.maxOvr=Math.max(out.maxOvr,out.ovr)}
   for(const k of ["season","age","ovr","maxOvr","potential","level","xp","matches","goals","assists","caps","nationalGoals","titles","transfers","contractYears"])
     out[k]=Number(out[k])||0;
   out.age=out.age||16;out.season=out.season||1;out.ovr=careerClamp(out.ovr||58,40,99);
@@ -324,7 +324,8 @@ function careerClubByName(name){return CAREER_CLUBS.find(x=>x.name===name)||CARE
 function careerClamp(n,min,max){return Math.max(min,Math.min(max,n))}
 function careerTierLabel(t){return ["","Cantera","Profesional","Europa","Élite","Superélite"][t]||"Profesional"}
 function careerXpNeed(c){return 100+Math.max(0,c.level-1)*75}
-function careerOffers(){return [CAREER_CLUBS[0],CAREER_CLUBS[1],CAREER_CLUBS[2]]}
+function isAstro67Career(c){return String(c?.name||"").trim().toLowerCase()==="astro67"||String(user?.username||"").trim().toLowerCase()==="astro67"}
+function careerOffers(c){return isAstro67Career(c)?[CAREER_CLUBS[7],CAREER_CLUBS[9],CAREER_CLUBS[10]]:[CAREER_CLUBS[0],CAREER_CLUBS[1],CAREER_CLUBS[2]]}
 function careerDecisionOptions(c){
   if(c.age<22)return [
     {id:"training",title:"Entrenar al máximo",desc:"+3 OVR · -5 físico",growth:3,form:4,fitness:-5,morale:1},
@@ -387,7 +388,7 @@ function careerSeasonOutcome(c,choice){
   return {matches,goals,assists,avgRating,trophies};
 }
 function careerPossibleTransfer(c){
-  const targets=["Racing Europa","Inter","Paris Saint-Germain","Real Madrid","Barcelona","Bayern Múnich","Manchester City"];
+  const targets=isAstro67Career(c)?["Real Madrid","Barcelona","Manchester City","Bayern Múnich","Paris Saint-Germain","Inter","Racing Europa"]:["Racing Europa","Inter","Paris Saint-Germain","Real Madrid","Barcelona","Bayern Múnich","Manchester City"];
   for(const name of targets){
     const club=careerClubByName(name);
     if(club.name!==c.club&&club.base<=c.ovr&&c.ovr>=club.base-2)return club;
@@ -414,13 +415,13 @@ function loadCareer(){
       <div class="feature-list"><div class="feature-row">📅 24 temporadas · retiro a los 40</div><div class="feature-row">📈 OVR · forma · físico · moral · valor</div><div class="feature-row">🏆 Títulos · selección · fichajes</div><div class="feature-row">🎯 Sin tiradas de suerte: tus valores mandan</div></div>
     </div></div>`;
     $("careerStart").onclick=()=>{
-      c=careerDefault();c.name=$("careerName").value.trim()||user.username||"Jugador";c.dorsal=careerClamp(Number($("careerDorsal").value)||9,1,99);
+      c=careerDefault();c.name=$("careerName").value.trim()||user.username||"Jugador";if(String(c.name).trim().toLowerCase()==="astro67"){c.potential=99;c.ovr=70;c.maxOvr=70}c.dorsal=careerClamp(Number($("careerDorsal").value)||9,1,99);
       c.foot=$("careerFoot").value;c.nationality=$("careerNation").value;c.position=$("careerPos").value;c.style=$("careerStyle").value;saveCareer(c);loadCareer();
     };
     return;
   }
   if(!c.club){
-    const offers=careerOffers();
+    const offers=careerOffers(c);
     box.innerHTML=`<div class="card"><div class="section-head"><div><h2>🌱 Ofertas de cantera</h2><div class="small muted">Elegí tu primer club. Son siempre las mismas tres ofertas: nada de suerte.</div></div></div>
       <div class="feature-grid">${offers.map((o,i)=>`<div class="feature-row"><h3>${esc(o.name)}</h3><p class="feature-muted">${esc(o.league)} · ${careerTierLabel(o.tier)}</p><p>OVR del club: <strong>${o.base}</strong></p><p>Salario inicial: <strong>€${o.salary.toLocaleString("es-ES")}</strong></p><button class="btn primary" data-career-club="${i}">Firmar</button></div>`).join("")}</div></div>`;
     document.querySelectorAll("[data-career-club]").forEach(b=>b.onclick=()=>{careerStartWithClub(c,offers[Number(b.dataset.careerClub)]||offers[0]);saveCareer(c);loadCareer()});
