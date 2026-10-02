@@ -261,6 +261,11 @@ async function ensureFeatureTables(env){
         opponent_score INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         expires_at INTEGER NOT NULL
+      )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS app_settings(
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
       )`)
     ]);
   })().catch(e=>{featureSchemaPromise=null;console.error("[feature-db]",e);throw e});
@@ -287,6 +292,25 @@ function weekendMultiplier(){
     return (day===0||day===6)?3:1;
   }
 }
+let rewardMultiplierCache={value:1,expiresAt:0,override:null};
+async function getRewardMultiplier(env){
+  const now=Date.now();
+  if(rewardMultiplierCache.expiresAt>now&&rewardMultiplierCache.override!==null)return rewardMultiplierCache.value;
+  try{
+    await ensureFeatureTables(env);
+    const row=await env.DB.prepare("SELECT value FROM app_settings WHERE key='reward_multiplier' LIMIT 1").first();
+    if(row&&row.value!==null&&row.value!==""){
+      const value=Number(row.value);
+      if(Number.isFinite(value)&&value>=0&&value<=100){
+        rewardMultiplierCache={value,expiresAt:now+10000,override:value};
+        return value;
+      }
+    }
+  }catch{}
+  const value=weekendMultiplier();
+  rewardMultiplierCache={value,expiresAt:now+10000,override:null};
+  return value;
+}
 function levelFromXp(xp){return Math.max(1,Math.floor(Math.sqrt(Math.max(0,Number(xp||0))/100))+1)}
 function dailyQuestionIds(date){
   const pool=QUESTION_SETS.dificil||[];
@@ -310,7 +334,7 @@ async function updateAnswerStats(env,userId,correct,points){
     await ensureUserStats(env,userId);
     const row=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(userId).first();
     const now=Date.now(),wk=weekKey();
-    const boost=weekendMultiplier();
+    const boost=await getRewardMultiplier(env);
 const xpGain=(correct?Math.max(5,Math.floor(Number(points||0)/10)):1)*boost;
     const streak=correct?(Number(row?.current_streak||0)+1):0;
     const best=Math.max(Number(row?.best_streak||0),streak);
@@ -987,7 +1011,7 @@ await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").b
         await maybeUnlockAchievements(env,winner,s);
         const loser=winner===Number(fresh.challenger_id)?Number(fresh.opponent_id):Number(fresh.challenger_id);
         await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(loser,"duel_result","⚔️ El duelo terminó. Ganó "+(winner===Number(fresh.challenger_id)?fresh.challenger:fresh.opponent)+".",now).run().catch(()=>{});
-        await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(winner,"duel_result","🏆 Ganaste el duelo y recibiste "+(100*weekendMultiplier())+" monedas.",now).run().catch(()=>{});
+        await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(winner,"duel_result","🏆 Ganaste el duelo y recibiste "+(100*await getRewardMultiplier(env))+" monedas.",now).run().catch(()=>{});
       }
       return json({correct,done:true,challengerScore:fresh.challenger_score,opponentScore:fresh.opponent_score,winner});
     }
@@ -1049,7 +1073,7 @@ await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").b
 
     if(correct) {
       const bonus=next>=ids.length?50:0;
-      const rewardMultiplier=weekendMultiplier();
+      const rewardMultiplier=await getRewardMultiplier(env);
       const awardedCoins=(coinGain+bonus)*rewardMultiplier;
       await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(awardedCoins,Date.now(),u.id).run();
       totalCoins=(u.coins||0)+awardedCoins;
@@ -1113,6 +1137,32 @@ await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").b
         .bind(qid,q[0],q[1],JSON.stringify(q[2]),q[3],1,now,ends).run();
       await log(env,admin.id,"live_question_start",null,{liveId:result.meta?.last_row_id,questionId:qid});
       return json({ok:true,liveId:result.meta?.last_row_id,endsAt:ends});
+    }
+
+    if(path==="/api/dev/reward-multiplier" && (req.method==="GET" || req.method==="POST")) {
+      const admin=await requireUser(req,env,true);
+      const ds=await devSession(req,env);
+      if(!admin||!ds||!isOwnerUser(admin,env))return json({error:"Solo el OWNER puede cambiar el multiplicador."},403);
+      await ensureFeatureTables(env);
+      if(req.method==="GET"){
+        const row=await env.DB.prepare("SELECT value,updated_at AS updatedAt FROM app_settings WHERE key='reward_multiplier' LIMIT 1").first();
+        const value=row?Number(row.value):null;
+        return json({override:Number.isFinite(value)?value:null,automatic:weekendMultiplier(),effective:row?value:weekendMultiplier()});
+      }
+      let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+      const raw=x.multiplier;
+      if(raw===null||raw===undefined||String(raw).trim()===""){
+        await env.DB.prepare("DELETE FROM app_settings WHERE key='reward_multiplier'").run();
+        rewardMultiplierCache={value:weekendMultiplier(),expiresAt:Date.now()+10000,override:null};
+        await log(env,admin.id,"reward_multiplier_reset",null,{automatic:weekendMultiplier()});
+        return json({ok:true,override:null,effective:await getRewardMultiplier(env)});
+      }
+      const multiplier=Number(raw);
+      if(!Number.isFinite(multiplier)||multiplier<0||multiplier>100)return json({error:"El multiplicador debe estar entre x0 y x100."},400);
+      await env.DB.prepare("INSERT INTO app_settings(key,value,updated_at) VALUES('reward_multiplier',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at").bind(String(multiplier),Date.now()).run();
+      rewardMultiplierCache={value:multiplier,expiresAt:Date.now()+10000,override:multiplier};
+      await log(env,admin.id,"reward_multiplier_set",null,{multiplier});
+      return json({ok:true,override:multiplier,effective:multiplier});
     }
 
     if(path==="/api/dev/broadcast" && req.method==="POST") {
