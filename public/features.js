@@ -41,6 +41,8 @@ function featureHideAll(){
   document.querySelectorAll("main>section").forEach(s=>s.classList.add("hidden"));
 }
 function featureHome(){
+  if(typeof liveTimer!=="undefined")clearInterval(liveTimer);
+  if(typeof duelPoll!=="undefined")clearInterval(duelPoll);
   featureHideAll();
   const home=$( "homeView" );
   if(home)home.classList.remove("hidden");
@@ -62,7 +64,6 @@ function addCard(id){
   card.className="menu-card";
   card.id="feature-card-"+id;
   card.innerHTML="<div class='menu-icon'>"+d.icon+"</div><h3>"+d.title+"</h3><p>"+d.desc+"</p>";
-  card.addEventListener("click",()=>openFeature(id+"View")||featureLoad(id));
   grid.appendChild(card);
 }
 function addViews(){
