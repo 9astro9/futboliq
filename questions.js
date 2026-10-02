@@ -1,8 +1,8 @@
 const SIMPLE_TEMPLATES = {
   wcWinner: [
-    f => \`¿Qué selección ganó el Mundial de \${f.ctx}?\`,
-    f => \`¿Quién fue campeón de la Copa del Mundo en \${f.ctx}?\`,
-    f => \`¿Qué país se consagró campeón mundial en \${f.ctx}?\`
+    f => `¿Qué selección ganó el Mundial de ${f.ctx}?`,
+    f => `¿Quién fue campeón de la Copa del Mundo en ${f.ctx}?`,
+    f => `¿Qué país se consagró campeón mundial en ${f.ctx}?`
   ],
   rule: [
     f => f.question,
@@ -10,19 +10,19 @@ const SIMPLE_TEMPLATES = {
     f => f.thirdQuestion
   ],
   legend: [
-    f => \`¿Qué jugador está asociado con el dato: \${f.ctx}?\`,
-    f => \`¿A qué leyenda corresponde este dato: \${f.ctx}?\`,
-    f => \`¿Quién es el jugador relacionado con \${f.ctx}?\`
+    f => `¿Qué jugador está asociado con el dato: ${f.ctx}?`,
+    f => `¿A qué leyenda corresponde este dato: ${f.ctx}?`,
+    f => `¿Quién es el jugador relacionado con ${f.ctx}?`
   ],
   club: [
-    f => \`¿Qué club tiene este dato histórico en la Champions: \${f.ctx}?\`,
-    f => \`¿A qué club corresponde \${f.ctx}?\`,
-    f => \`¿Qué equipo registra \${f.ctx} en la Champions?\`
+    f => `¿Qué club tiene este dato histórico en la Champions: ${f.ctx}?`,
+    f => `¿A qué club corresponde ${f.ctx}?`,
+    f => `¿Qué equipo registra ${f.ctx} en la Champions?`
   ],
   tournament: [
-    f => \`¿Qué selección tiene el siguiente récord mundialista: \${f.ctx}?\`,
-    f => \`¿A qué país corresponde este dato de Mundiales: \${f.ctx}?\`,
-    f => \`¿Qué selección está asociada con \${f.ctx}?\`
+    f => `¿Qué selección tiene el siguiente récord mundialista: ${f.ctx}?`,
+    f => `¿A qué país corresponde este dato de Mundiales: ${f.ctx}?`,
+    f => `¿Qué selección está asociada con ${f.ctx}?`
   ],
   basic: [
     f => f.question,
@@ -33,14 +33,14 @@ const SIMPLE_TEMPLATES = {
 
 const HARD_TEMPLATES = {
   wcApps: [
-    f => \`¿Cuántos partidos jugó \${f.subject} en la historia de los Mundiales?\`,
-    f => \`¿Qué cifra de apariciones mundialistas corresponde a \${f.subject}?\`,
-    f => \`¿Con cuántos partidos de Mundial figura \${f.subject} en el registro de FIFA?\`
+    f => `¿Cuántos partidos jugó ${f.subject} en la historia de los Mundiales?`,
+    f => `¿Qué cifra de apariciones mundialistas corresponde a ${f.subject}?`,
+    f => `¿Con cuántos partidos de Mundial figura ${f.subject} en el registro de FIFA?`
   ],
   clean: [
-    f => \`¿Cuántas vallas invictas consiguió \${f.subject} en Mundiales?\`,
-    f => \`¿Qué cantidad de porterías a cero tiene \${f.subject} en la historia mundialista?\`,
-    f => \`¿Con cuántos partidos sin recibir goles figura \${f.subject} en los Mundiales?\`
+    f => `¿Cuántas vallas invictas consiguió ${f.subject} en Mundiales?`,
+    f => `¿Qué cantidad de porterías a cero tiene ${f.subject} en la historia mundialista?`,
+    f => `¿Con cuántos partidos sin recibir goles figura ${f.subject} en los Mundiales?`
   ],
   ronaldo: [
     f => f.question,
@@ -48,14 +48,14 @@ const HARD_TEMPLATES = {
     f => f.thirdQuestion
   ],
   uclTitles: [
-    f => \`¿Cuántos títulos de la Champions tiene \${f.subject} según el registro histórico de UEFA?\`,
-    f => \`¿Qué cantidad de Champions corresponde a \${f.subject}?\`,
-    f => \`¿Con cuántas Champions aparece \${f.subject} en el palmarés histórico?\`
+    f => `¿Cuántos títulos de la Champions tiene ${f.subject} según el registro histórico de UEFA?`,
+    f => `¿Qué cantidad de Champions corresponde a ${f.subject}?`,
+    f => `¿Con cuántas Champions aparece ${f.subject} en el palmarés histórico?`
   ],
   uclAppsClub: [
-    f => \`¿Cuántas apariciones históricas tiene \${f.subject} en la Champions?\`,
-    f => \`¿Qué cifra de participaciones corresponde a \${f.subject} en la Champions?\`,
-    f => \`¿Con cuántas apariciones figura \${f.subject} en el registro histórico de UEFA?\`
+    f => `¿Cuántas apariciones históricas tiene ${f.subject} en la Champions?`,
+    f => `¿Qué cifra de participaciones corresponde a ${f.subject} en la Champions?`,
+    f => `¿Con cuántas apariciones figura ${f.subject} en el registro histórico de UEFA?`
   ]
 };
 
@@ -279,11 +279,11 @@ function expandImpossible(facts){
   const out=[];
   facts.forEach((f,i)=>{
     const a=optionSet(playerPool,f.player,i);
-    out.push([f.cat,\`¿Qué jugador hizo un hat-trick contra \${f.opponent} en el Mundial de \${f.year}?\`,a.options,a.correct,"imposible"]);
+    out.push([f.cat,`¿Qué jugador hizo un hat-trick contra ${f.opponent} en el Mundial de ${f.year}?`,a.options,a.correct,"imposible"]);
     const b=optionSet(opponentPool,f.opponent,i+1);
-    out.push([f.cat,\`¿Contra qué selección hizo el hat-trick \${f.player} en \${f.year}?\`,b.options,b.correct,"imposible"]);
+    out.push([f.cat,`¿Contra qué selección hizo el hat-trick ${f.player} en ${f.year}?`,b.options,b.correct,"imposible"]);
     const c=optionSet(teamPool,f.team,i+2);
-    out.push([f.cat,\`¿Qué selección representaba \${f.player} cuando hizo el hat-trick contra \${f.opponent} en \${f.year}?\`,c.options,c.correct,"imposible"]);
+    out.push([f.cat,`¿Qué selección representaba ${f.player} cuando hizo el hat-trick contra ${f.opponent} en ${f.year}?`,c.options,c.correct,"imposible"]);
   });
   return out;
 }
@@ -293,7 +293,7 @@ const HARD=expandSimple(HARD_FACTS,"dificil",HARD_TEMPLATES);
 const IMPOSSIBLE=expandImpossible(IMPOSSIBLE_FACTS);
 
 if(EASY.length!==168 || HARD.length!==168 || IMPOSSIBLE.length!==168)
-  throw new Error(\`Banco inválido: fácil=\${EASY.length}, difícil=\${HARD.length}, imposible=\${IMPOSSIBLE.length}\`);
+  throw new Error(`Banco inválido: fácil=${EASY.length}, difícil=${HARD.length}, imposible=${IMPOSSIBLE.length}`);
 
 export const QUESTIONS=[...EASY,...HARD,...IMPOSSIBLE];
 export const QUESTION_SETS={
