@@ -136,25 +136,6 @@ async function requireUser(req,env,admin=false) {
   return u;
 }
 
-async function captcha(tokenValue,req,env) {
-  if(!env.TURNSTILE_SECRET) return true;
-  if(!tokenValue) return false;
-  try {
-    const form=new FormData();
-    form.append("secret",env.TURNSTILE_SECRET);
-    form.append("response",tokenValue);
-    const ip=req.headers.get("CF-Connecting-IP");
-    if(ip) form.append("remoteip",ip);
-    const r=await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify",{method:"POST",body:form});
-    if(!r.ok) return false;
-    const data=await r.json();
-    return data.success===true;
-  } catch(e) {
-    console.error("[captcha]",e);
-    return false;
-  }
-}
-
 async function devSession(req,env) {
   const raw=getCookie(req,"f_dev");
   if(!raw) return null;
@@ -175,12 +156,7 @@ async function api(req,env) {
   await ensureDatabase(env);
   const url=new URL(req.url);
   const path=url.pathname;
-  if(!sameOrigin(req)) return json({error:"Origen no permitido"},403);
-
-  if(path==="/api/config" && req.method==="GET")
-    return json({turnstileSiteKey:env.TURNSTILE_SITEKEY||"",questionCount:PUBLIC_QUESTIONS.length});
-
-  if(path==="/api/health" && req.method==="GET") {
+  if(!sameOrigin(req)) return json({error:"Origen no permitido"},403);if(path==="/api/health" && req.method==="GET") {
     try {
       const rows=await env.DB.prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('users','sessions','games','dev_sessions','audit_logs') ORDER BY name"
@@ -202,7 +178,6 @@ async function api(req,env) {
     const password=String(x.password||"");
     if(!/^[A-Za-z0-9_]{3,16}$/.test(username)) return json({error:"El usuario debe tener 3-16 caracteres: letras, números o _."},400);
     if(password.length<8 || password.length>128) return json({error:"La contraseña debe tener entre 8 y 128 caracteres."},400);
-    if(!(await captcha(x.turnstileToken,req,env))) return json({error:"Completa el CAPTCHA."},400);
 
     const existing=await env.DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE LIMIT 1").bind(username).first();
     if(existing) return json({error:"Ese usuario ya existe."},409);
@@ -249,7 +224,6 @@ async function api(req,env) {
     let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
     const username=String(x.username||"").trim();
     const password=String(x.password||"");
-    if(!(await captcha(x.turnstileToken,req,env))) return json({error:"Completa el CAPTCHA."},400);
     const row=await env.DB.prepare("SELECT * FROM users WHERE username=? COLLATE NOCASE LIMIT 1").bind(username).first();
     if(!row) return json({error:"La cuenta no existe."},404);
     if(row.status!=="active") return json({error:"Esta cuenta está bloqueada."},403);
