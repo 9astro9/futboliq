@@ -172,6 +172,167 @@ async function ensureDatabase(env) {
   });
   return schemaReadyPromise;
 }
+const FEATURE_ACHIEVEMENTS=[
+  {id:"first_correct",title:"Primer acierto",desc:"Respondé una pregunta correctamente."},
+  {id:"correct_100",title:"Centenario",desc:"100 respuestas correctas."},
+  {id:"correct_500",title:"Máquina",desc:"500 respuestas correctas."},
+  {id:"streak_10",title:"Racha x10",desc:"10 respuestas correctas seguidas."},
+  {id:"daily_7",title:"Semana perfecta",desc:"7 días seguidos completando el desafío diario."},
+  {id:"duel_1",title:"Primer duelo",desc:"Ganás tu primer duelo."},
+  {id:"duel_10",title:"Rey del 1v1",desc:"Ganás 10 duelos."},
+  {id:"level_10",title:"Nivel 10",desc:"Llegás al nivel 10."}
+];
+
+let featureSchemaPromise=null;
+async function ensureFeatureTables(env){
+  if(featureSchemaPromise) return featureSchemaPromise;
+  featureSchemaPromise=(async()=>{
+    await env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_stats(
+        user_id INTEGER PRIMARY KEY,
+        xp INTEGER NOT NULL DEFAULT 0,
+        total_answers INTEGER NOT NULL DEFAULT 0,
+        correct_answers INTEGER NOT NULL DEFAULT 0,
+        current_streak INTEGER NOT NULL DEFAULT 0,
+        best_streak INTEGER NOT NULL DEFAULT 0,
+        daily_streak INTEGER NOT NULL DEFAULT 0,
+        best_daily_streak INTEGER NOT NULL DEFAULT 0,
+        daily_last_date TEXT,
+        wins INTEGER NOT NULL DEFAULT 0,
+        weekly_score INTEGER NOT NULL DEFAULT 0,
+        weekly_key TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS achievements(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        achievement_id TEXT NOT NULL,
+        unlocked_at INTEGER NOT NULL,
+        UNIQUE(user_id,achievement_id)
+      )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS daily_progress(
+        user_id INTEGER NOT NULL,
+        challenge_date TEXT NOT NULL,
+        idx INTEGER NOT NULL DEFAULT 0,
+        score INTEGER NOT NULL DEFAULT 0,
+        question_ids TEXT NOT NULL,
+        completed INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id,challenge_date)
+      )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS live_questions(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        question_id INTEGER NOT NULL,
+        category TEXT NOT NULL,
+        question_text TEXT NOT NULL,
+        options_json TEXT NOT NULL,
+        correct_index INTEGER NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1,
+        starts_at INTEGER NOT NULL,
+        ends_at INTEGER NOT NULL
+      )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS live_answers(
+        live_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        choice INTEGER NOT NULL,
+        correct INTEGER NOT NULL,
+        answered_at INTEGER NOT NULL,
+        PRIMARY KEY(live_id,user_id)
+      )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS friends(
+        user_id INTEGER NOT NULL,
+        friend_id INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id,friend_id)
+      )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS duels(
+        id TEXT PRIMARY KEY,
+        challenger_id INTEGER NOT NULL,
+        opponent_id INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        question_ids TEXT NOT NULL,
+        challenger_idx INTEGER NOT NULL DEFAULT 0,
+        opponent_idx INTEGER NOT NULL DEFAULT 0,
+        challenger_score INTEGER NOT NULL DEFAULT 0,
+        opponent_score INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL
+      `)
+    ]);
+  })().catch(e=>{featureSchemaPromise=null;console.error("[feature-db]",e);throw e});
+  return featureSchemaPromise;
+}
+
+function weekKey(date=new Date()){
+  const d=new Date(date);
+  const t=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
+  const day=t.getUTCDay()||7;
+  t.setUTCDate(t.getUTCDate()+4-day);
+  const y=t.getUTCFullYear();
+  const first=new Date(Date.UTC(y,0,1));
+  const week=Math.ceil((((t-first)/86400000)+1)/7);
+  return y+"-W"+String(week).padStart(2,"0");
+}
+
+function levelFromXp(xp){return Math.max(1,Math.floor(Math.sqrt(Math.max(0,Number(xp||0))/100))+1)}
+function dailyQuestionIds(date){
+  const pool=QUESTION_SETS.dificil||[];
+  let seed=[...String(date)].reduce((n,ch)=>((n*31+ch.charCodeAt(0))>>>0),2166136261);
+  const ids=[],used=new Set();
+  while(ids.length<10&&ids.length<pool.length){
+    seed=(Math.imul(seed,1664525)+1013904223)>>>0;
+    const id=pool[seed%pool.length];
+    if(!used.has(id)){used.add(id);ids.push(id)}
+  }
+  return ids;
+}
+async function ensureUserStats(env,userId){
+  const now=Date.now(),wk=weekKey();
+  await env.DB.prepare("INSERT OR IGNORE INTO user_stats(user_id,created_at,updated_at,weekly_key) VALUES(?,?,?,?,?)".replace("VALUES(?,?,?,?,?)","VALUES(?,?,?,?)"))
+    .bind(userId,now,now,wk).run();
+}
+async function updateAnswerStats(env,userId,correct,points){
+  try{
+    await ensureFeatureTables(env);
+    await ensureUserStats(env,userId);
+    const row=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(userId).first();
+    const now=Date.now(),wk=weekKey();
+    const xpGain=correct?Math.max(5,Math.floor(Number(points||0)/10)):1;
+    const streak=correct?(Number(row?.current_streak||0)+1):0;
+    const best=Math.max(Number(row?.best_streak||0),streak);
+    const weekly=(row?.weekly_key===wk?Number(row?.weekly_score||0):0)+(correct?Number(points||0):0);
+    const xp=Number(row?.xp||0)+xpGain;
+    await env.DB.prepare("UPDATE user_stats SET xp=?,total_answers=total_answers+1,correct_answers=correct_answers+?,current_streak=?,best_streak=?,weekly_score=?,weekly_key=?,updated_at=? WHERE user_id=?")
+      .bind(xp,correct?1:0,streak,best,weekly,wk,now,userId).run();
+    const after=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=?").bind(userId).first();
+    await maybeUnlockAchievements(env,userId,after);
+    return after;
+  }catch(e){console.error("[answer-stats]",e);return null}
+}
+async function maybeUnlockAchievements(env,userId,s){
+  if(!s)return;
+  const ids=[];
+  if(Number(s.correct_answers)>=1)ids.push("first_correct");
+  if(Number(s.correct_answers)>=100)ids.push("correct_100");
+  if(Number(s.correct_answers)>=500)ids.push("correct_500");
+  if(Number(s.best_streak)>=10)ids.push("streak_10");
+  if(Number(s.daily_streak)>=7)ids.push("daily_7");
+  if(Number(s.wins)>=1)ids.push("duel_1");
+  if(Number(s.wins)>=10)ids.push("duel_10");
+  if(levelFromXp(s.xp)>=10)ids.push("level_10");
+  for(const id of ids){
+    const ins=await env.DB.prepare("INSERT OR IGNORE INTO achievements(user_id,achievement_id,unlocked_at) VALUES(?,?,?)").bind(userId,id,Date.now()).run();
+    if(ins.meta?.changes){
+      const def=FEATURE_ACHIEVEMENTS.find(x=>x.id===id);
+      if(def) await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)").bind(userId,"achievement","🏅 Logro desbloqueado: "+def.title+" — "+def.desc,Date.now()).run().catch(()=>{});
+    }
+  }
+}
+
 const json = (data,status=200,headers={}) =>
   new Response(JSON.stringify(data), {
     status,
