@@ -169,7 +169,7 @@ async function api(req,env) {
   if(path==="/api/logout" && req.method==="POST") {
     const raw=getCookie(req,"f_session");
     if(raw) await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await digest(raw)).run();
-    return json({ok:true},{"Set-Cookie":cookieHeader(req,"f_session","",0)});
+    return json({ok:true},200,{"Set-Cookie":cookieHeader(req,"f_session","",0)});
   }
 
   if(path==="/api/ranking" && req.method==="GET") {
