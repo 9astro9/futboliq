@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FUTBOLIQ — Quiz de fútbol</title><link rel="icon" href="data:,">
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <style>
 :root{--bg:#080c15;--card:#111827;--card2:#0d1422;--text:#f3f4f6;--muted:#9ca3af;--line:#263247;--accent:#35d39a;--danger:#f87171;--shadow:0 14px 35px rgba(0,0,0,.25)}
 :root.light{--bg:#eef2f7;--card:#fff;--card2:#f7f9fc;--text:#101827;--muted:#5f6b7b;--line:#d9e0ea;--shadow:0 10px 25px rgba(15,23,42,.09)}
@@ -31,7 +30,6 @@
   <div class="field"><label>Usuario</label><input id="username" maxlength="16" autocomplete="username" spellcheck="false"></div>
   <div class="field"><label>Contraseña</label><input id="password" type="password" maxlength="128" autocomplete="current-password"></div>
   <div class="field hidden" id="confirmWrap"><label>Repite la contraseña</label><input id="confirmPassword" type="password" maxlength="128" autocomplete="new-password"></div>
-  <div id="turnstileBox"></div>
   <button type="button" class="btn primary" style="width:100%" onclick="submitAuth()" id="authBtn">Iniciar sesión</button>
   <div id="authMsg" class="notice muted"></div>
   <p id="authHint" class="small muted">Inicia sesión para jugar y aparecer en el ranking global.</p>
@@ -74,7 +72,6 @@ let mode="login", user=null, gameId=null, devOpen=false;
 let sound=localStorage.getItem("fql_sound")!=="off";
 let theme=localStorage.getItem("fql_theme")||"dark";
 let lang=localStorage.getItem("fql_lang")||"es";
-let widgetId=null, turnstileReady=false, turnstileConfig=null, turnstileRendering=false, turnstileWaiter=null;
 const $=id=>document.getElementById(id);
 const T={
 es:{login:"Iniciar sesión",register:"Crear cuenta",account:"Cuenta",start:"Empezar partida",next:"Siguiente",finish:"Partida terminada",points:"Puntos",settings:"Configuración",soundOn:"Activado",soundOff:"Desactivado",dark:"Oscuro",light:"Claro"},
@@ -89,12 +86,6 @@ function toggleTheme(){
   theme=theme==="dark"?"light":"dark";
   localStorage.setItem("fql_theme",theme);
   applyPrefs();
-  if(widgetId!==null){
-    removeTurnstile();
-    turnstileReady=false;
-    turnstileRendering=false;
-    renderTurnstile();
-  }
 }
 function beep(freq=520){if(!sound)return;try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;g.gain.value=.04;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.08)}catch{}}
 function openSettings(){$("settings").classList.toggle("hidden")}
@@ -110,112 +101,6 @@ function switchAuth(m){
   $("confirmWrap").classList.toggle("hidden",!registering);
   $("authHint").textContent=registering?"Usa un nombre único de 3 a 16 caracteres.":"Escribe tus datos y pulsa Entrar.";
   $("authMsg").textContent="";
-  if(widgetId!==null)resetTurnstile();
-  else if(!turnstileRendering)renderTurnstile();
-}
-function removeTurnstile(){
-  if(turnstileWaiter){
-    try{turnstileWaiter.reject(new Error("CAPTCHA reiniciado."))}catch{}
-    turnstileWaiter=null;
-  }
-  if(widgetId!==null && window.turnstile){
-    try{turnstile.remove(widgetId)}catch{}
-  }
-  widgetId=null;
-}
-function resetTurnstile(){
-  if(widgetId!==null && window.turnstile){
-    try{turnstile.reset(widgetId)}catch{removeTurnstile()}
-  }
-}
-let turnstileAttempts=0;
-function renderTurnstile(){
-  if(turnstileRendering)return;
-  turnstileRendering=true;
-  api("/api/config").then(config=>{
-    turnstileConfig=config;
-    if(!config.turnstileSiteKey){
-      turnstileRendering=false;
-      $("turnstileBox").innerHTML="<div class='small muted'>CAPTCHA no configurado todavía en Cloudflare.</div>";
-      return;
-    }
-    window.__tsSiteKey=config.turnstileSiteKey;
-    const tryRender=()=>{
-      if(widgetId!==null || !turnstileConfig || turnstileRendering===false)return;
-      if(window.turnstile){
-        try{
-          $("turnstileBox").innerHTML="";
-          widgetId=turnstile.render($("turnstileBox"),{
-            sitekey:turnstileConfig.turnstileSiteKey,
-            theme:theme==="dark"?"dark":"light",
-            appearance:"interaction-only",
-            execution:"execute",
-            retry:"never",
-            callback:(token)=>{
-              turnstileReady=!!token;
-              if(turnstileWaiter){
-                const w=turnstileWaiter;
-                turnstileWaiter=null;
-                w.resolve(token);
-              }
-            },
-            "expired-callback":()=>{
-              turnstileReady=false;
-              if(turnstileWaiter){
-                const w=turnstileWaiter;
-                turnstileWaiter=null;
-                w.reject(new Error("El CAPTCHA expiró. Inténtalo de nuevo."));
-              }
-            },
-            "error-callback":()=>{
-              turnstileReady=false;
-              if(turnstileWaiter){
-                const w=turnstileWaiter;
-                turnstileWaiter=null;
-                w.reject(new Error("No se pudo completar el CAPTCHA."));
-              }
-            }
-          });
-          turnstileReady=false;
-          turnstileRendering=false;
-        }catch(e){
-          turnstileRendering=false;
-          $("turnstileBox").innerHTML="<div class='small muted'>No se pudo cargar el CAPTCHA. Comprueba el dominio autorizado en Cloudflare Turnstile.</div>";
-        }
-      }else if(turnstileAttempts++<40){
-        setTimeout(tryRender,250);
-      }else{
-        turnstileRendering=false;
-        $("turnstileBox").innerHTML="<div class='small muted'>El CAPTCHA no terminó de cargar. Recarga la página.</div>";
-      }
-    };
-    tryRender();
-  }).catch(()=>{
-    turnstileRendering=false;
-    $("turnstileBox").innerHTML="<div class='small muted'>No se pudo conectar con la configuración del CAPTCHA.</div>";
-  });
-}
-function tokenValue(){
-  if(!window.turnstile || widgetId===null || !turnstileReady)return "";
-  try{return turnstile.getResponse(widgetId)||""}catch{return ""}
-}
-function executeTurnstile(){
-  if(tokenValue()) return Promise.resolve(tokenValue());
-  if(!window.turnstile || widgetId===null) return Promise.reject(new Error("El CAPTCHA todavía no está listo."));
-  if(turnstileWaiter) return turnstileWaiter.promise;
-  const promise=new Promise((resolve,reject)=>{
-    turnstileWaiter={resolve,reject,promise:null};
-  });
-  turnstileWaiter.promise=promise;
-  try{
-    turnstileReady=false;
-    turnstile.execute(widgetId);
-  }catch(e){
-    const w=turnstileWaiter;
-    turnstileWaiter=null;
-    w.reject(new Error("No se pudo iniciar el CAPTCHA."));
-  }
-  return promise;
 }
 async function submitAuth(){
   const username=$("username").value.trim();
@@ -228,8 +113,7 @@ async function submitAuth(){
   btn.textContent="Comprobando…";
   try{
     const path=mode==="login"?"/api/login":"/api/register";
-    const tsToken=await executeTurnstile();
-    const x=await api(path,{method:"POST",body:JSON.stringify({username,password,turnstileToken:tsToken})});
+    const x=await api(path,{method:"POST",body:JSON.stringify({username,password})});
     user=x.user;
     $("auth").classList.add("hidden");
     $("app").classList.remove("hidden");
@@ -239,8 +123,6 @@ async function submitAuth(){
     loadRanking();
   }catch(e){
     $("authMsg").textContent=e.message;
-    turnstileReady=false;
-    resetTurnstile();
   }finally{
     btn.disabled=false;
     btn.textContent=mode==="register"?"Crear mi cuenta":"Entrar";
@@ -342,7 +224,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   applyPrefs();
   accountUI();
   switchAuth("login");
-  renderTurnstile();
 });
 </script>
 </body>
