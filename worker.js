@@ -690,8 +690,8 @@ async function api(req,env) {
     if(!u) return json({error:"Inicia sesión."},403);
     const claimDate=new Date().toISOString().slice(0,10);
     const gift=await env.DB.prepare("SELECT 1 FROM daily_gifts WHERE user_id=? AND claim_date=? LIMIT 1").bind(u.id,claimDate).first();
-    if(req.method==="GET") return json({claimed:Boolean(gift),coins:u.coins||0,claimDate});
-    if(gift) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate},409);
+    if(req.method==="GET") return json({claimed:Boolean(gift),coins:u.coins||0,claimDate,multiplier:await getRewardMultiplier(env)});
+    if(gift) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate,multiplier:await getRewardMultiplier(env)},409);
     const inserted=await env.DB.prepare("INSERT OR IGNORE INTO daily_gifts(user_id,claim_date,claimed_at) VALUES(?,?,?)").bind(u.id,claimDate,Date.now()).run();
     if(!inserted.meta?.changes) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate},409);
     try {
