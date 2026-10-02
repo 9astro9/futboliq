@@ -140,7 +140,7 @@ async function loadWeeklyRanking(){
   const box=$("weeklyRanking");if(!box)return;
   try{
     const x=await api("/api/ranking/weekly");
-    box.innerHTML="<div class='feature-list'>"+(x.ranking||[]).map((r,i)=>"<div class='feature-row'><strong>#"+(i+1)+" "+nameHtml(r.username,r.nameColor,false)+"</strong> · "+Number(r.score||0).toLocaleString("es-ES")+" pts</div>").join("")+"</div>";
+    box.innerHTML="<div class='feature-list'>"+(x.ranking||[]).map((r,i)=>"<div class='feature-row'><strong>#"+(i+1)+" "+nameHtml(r.username,r.nameColor,false)+" "+(typeof rankHtml==="function"?rankHtml(r.profileRank):"")+"</strong> · "+Number(r.score||0).toLocaleString("es-ES")+" pts</div>").join("")+"</div>";
   }catch(e){box.textContent=e.message||"No se pudo cargar."}
 }
 
