@@ -23,16 +23,17 @@
 </header>
 
 <section id="auth" class="card auth">
+  <h2 id="authTitle" style="margin-top:0">Iniciar sesión</h2>
   <div class="tabs">
-    <button class="btn primary" id="tabLogin" onclick="switchAuth('login')">Entrar</button>
-    <button class="btn" id="tabRegister" onclick="switchAuth('register')">Crear cuenta</button>
+    <button type="button" class="btn primary" id="tabLogin" onclick="switchAuth('login')">Iniciar sesión</button>
+    <button type="button" class="btn" id="tabRegister" onclick="switchAuth('register')">Crear cuenta</button>
   </div>
   <div class="field"><label>Usuario</label><input id="username" maxlength="16" autocomplete="username"></div>
   <div class="field"><label>Contraseña</label><input id="password" type="password" maxlength="128" autocomplete="current-password"></div>
   <div id="turnstileBox"></div>
-  <button class="btn primary" style="width:100%" onclick="submitAuth()" id="authBtn">Iniciar sesión</button>
+  <button type="button" class="btn primary" style="width:100%" onclick="submitAuth()" id="authBtn">Iniciar sesión</button>
   <div id="authMsg" class="notice muted"></div>
-  <p class="small muted">Necesitas una cuenta para jugar y aparecer en el ranking global.</p>
+  <p id="authHint" class="small muted">Inicia sesión para jugar y aparecer en el ranking global.</p>
 </section>
 
 <div id="app" class="hidden">
@@ -87,7 +88,18 @@ function toggleTheme(){theme=theme==="dark"?"light":"dark";localStorage.setItem(
 function beep(freq=520){if(!sound)return;try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;g.gain.value=.04;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.08)}catch{}}
 function openSettings(){$("settings").classList.toggle("hidden")}
 function api(path,options={}){return fetch(path,{credentials:"same-origin",headers:{"content-type":"application/json",...(options.headers||{})},...options}).then(async r=>{let x={};try{x=await r.json()}catch{};if(!r.ok)throw new Error(x.error||"Error");return x})}
-function switchAuth(m){mode=m;$("authBtn").textContent=tr(m==="login"?"login":"register");$("tabLogin").className="btn"+(m==="login"?" primary":"");$("tabRegister").className="btn"+(m==="register"?" primary":"");resetTurnstile()}
+function switchAuth(m){
+  mode=m;
+  const registering=m==="register";
+  $("authTitle").textContent=registering?"Crear cuenta":"Iniciar sesión";
+  $("authBtn").textContent=tr(registering?"register":"login");
+  $("tabLogin").className="btn"+(!registering?" primary":"");
+  $("tabRegister").className="btn"+(registering?" primary":"");
+  $("password").autocomplete=registering?"new-password":"current-password";
+  $("authHint").textContent=registering?"Crea una cuenta para guardar tu progreso y entrar al ranking global.":"Inicia sesión para jugar y aparecer en el ranking global.";
+  $("authMsg").textContent="";
+  resetTurnstile();
+}
 function resetTurnstile(){if(widgetId!==null && window.turnstile){try{turnstile.reset(widgetId)}catch{}}}
 let turnstileAttempts=0;
 function renderTurnstile(){
@@ -152,7 +164,12 @@ async function devAction(id,action){if(!confirm("¿Confirmar "+action+"?"))retur
 async function closeDev(){await api("/api/dev/close",{method:"POST",body:"{}"});$("devPanel").classList.add("hidden");devOpen=false}
 let seq="",seqTimer=0;
 window.addEventListener("keydown",e=>{if(e.key.length!==1)return;seq=(seq+e.key.toLowerCase()).slice(-3);clearTimeout(seqTimer);seqTimer=setTimeout(()=>seq="",1200);if(seq==="ftb")devConsole()});
-document.addEventListener("DOMContentLoaded",()=>{applyPrefs();accountUI();renderTurnstile();});
+document.addEventListener("DOMContentLoaded",()=>{
+  applyPrefs();
+  accountUI();
+  switchAuth("login");
+  renderTurnstile();
+});
 </script>
 </body>
 </html>
