@@ -89,7 +89,33 @@ function openSettings(){$("settings").classList.toggle("hidden")}
 function api(path,options={}){return fetch(path,{credentials:"same-origin",headers:{"content-type":"application/json",...(options.headers||{})},...options}).then(async r=>{let x={};try{x=await r.json()}catch{};if(!r.ok)throw new Error(x.error||"Error");return x})}
 function switchAuth(m){mode=m;$("authBtn").textContent=tr(m==="login"?"login":"register");$("tabLogin").className="btn"+(m==="login"?" primary":"");$("tabRegister").className="btn"+(m==="register"?" primary":"");resetTurnstile()}
 function resetTurnstile(){if(widgetId!==null && window.turnstile){try{turnstile.reset(widgetId)}catch{}}}
-function renderTurnstile(){api("/api/config").then(c=>{if(!c.turnstileSiteKey){$("turnstileBox").innerHTML="<div class='small muted'>CAPTCHA listo para producción; falta configurar la Site Key en Cloudflare.</div>";return}window.__tsSiteKey=c.turnstileSiteKey;if(window.turnstile && widgetId===null){widgetId=turnstile.render("#turnstileBox",{sitekey:c.turnstileSiteKey,theme:theme==="dark"?"dark":"light"})}}).catch(()=>{})}
+let turnstileAttempts=0;
+function renderTurnstile(){
+  api("/api/config").then(config=>{
+    if(!config.turnstileSiteKey){
+      $("turnstileBox").innerHTML="<div class='small muted'>CAPTCHA no configurado todavía en Cloudflare.</div>";
+      return;
+    }
+    window.__tsSiteKey=config.turnstileSiteKey;
+    const tryRender=()=>{
+      if(widgetId!==null) return;
+      if(window.turnstile){
+        try{
+          widgetId=turnstile.render("#turnstileBox",{sitekey:config.turnstileSiteKey,theme:theme==="dark"?"dark":"light"});
+        }catch(e){
+          $("turnstileBox").innerHTML="<div class='small muted'>No se pudo cargar el CAPTCHA. Comprueba que el dominio de este Worker esté autorizado en Turnstile.</div>";
+        }
+      }else if(turnstileAttempts++<40){
+        setTimeout(tryRender,250);
+      }else{
+        $("turnstileBox").innerHTML="<div class='small muted'>El CAPTCHA no terminó de cargar. Recarga la página.</div>";
+      }
+    };
+    tryRender();
+  }).catch(()=>{
+    $("turnstileBox").innerHTML="<div class='small muted'>No se pudo conectar con la configuración del CAPTCHA.</div>";
+  });
+}
 function tokenValue(){return window.turnstile && widgetId!==null ? turnstile.getResponse(widgetId):""}
 async function submitAuth(){
   $("authMsg").textContent="Comprobando…";
