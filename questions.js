@@ -123,69 +123,67 @@ const EASY_FACTS = [
   {type:"basic",question:"¿Qué torneo comenzó en 1930 con Uruguay como campeón?",altQuestion:"¿Cómo se llama la competencia inaugurada en 1930?",thirdQuestion:"¿Qué gran torneo de selecciones tuvo su primera edición en 1930?",answer:"Copa Mundial de la FIFA",cat:"Mundiales"}
 ];
 
-const HARD_FACTS = [
-  {type:"wcApps",subject:"Lionel Messi",answer:"34",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Cristiano Ronaldo",answer:"27",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Lothar Matthäus",answer:"25",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Miroslav Klose",answer:"24",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Paolo Maldini",answer:"23",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Luka Modrić",answer:"23",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Manuel Neuer",answer:"23",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Kylian Mbappé",answer:"22",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Thibaut Courtois",answer:"21",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Diego Maradona",answer:"21",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Nicolás Otamendi",answer:"21",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Ivan Perišić",answer:"21",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Uwe Seeler",answer:"21",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Władysław Żmuda",answer:"21",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Cafú",answer:"20",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Philipp Lahm",answer:"20",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Grzegorz Lato",answer:"20",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Hugo Lloris",answer:"20",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Javier Mascherano",answer:"20",cat:"Récords FIFA"},
-  {type:"wcApps",subject:"Bastian Schweinsteiger",answer:"20",cat:"Récords FIFA"},
+const NORMAL_FACTS = [
+  // SUDAMÉRICA — 28 temas
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó el primer Mundial, en 1930?",altQuestion:"¿Quién fue campeón del Mundial de 1930?",thirdQuestion:"¿Qué país levantó la primera Copa del Mundo?",answer:"Uruguay",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó el Mundial de 1950?",altQuestion:"¿Quién fue campeón del Mundial de Brasil 1950?",thirdQuestion:"¿Qué país ganó la Copa del Mundo de 1950?",answer:"Uruguay",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó el Mundial de 1978?",altQuestion:"¿Quién fue campeón de la Copa del Mundo de 1978?",thirdQuestion:"¿Qué país ganó el Mundial de 1978?",answer:"Argentina",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó el Mundial de 1986?",altQuestion:"¿Quién fue campeón del Mundial de 1986?",thirdQuestion:"¿Qué país levantó la Copa del Mundo de 1986?",answer:"Argentina",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó el Mundial de 2022?",altQuestion:"¿Quién fue campeón del Mundial de Catar 2022?",thirdQuestion:"¿Qué país ganó la Copa del Mundo de 2022?",answer:"Argentina",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección tiene cinco Mundiales?",altQuestion:"¿Qué país es el máximo campeón de la Copa del Mundo?",thirdQuestion:"¿Quién ganó cinco veces el Mundial?",answer:"Brasil",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué jugador es conocido como 'O Rei'?",altQuestion:"¿A quién apodan 'O Rei'?",thirdQuestion:"¿Qué leyenda brasileña fue conocida como 'O Rei'?",answer:"Pelé",cat:"Leyendas"},
+  {type:"basic",region:"Sudamérica",question:"¿Quién fue una de las grandes figuras de Argentina en el Mundial 1986?",altQuestion:"¿Qué leyenda argentina brilló en México 1986?",thirdQuestion:"¿Qué argentino fue capitán campeón en 1986?",answer:"Diego Maradona",cat:"Leyendas"},
+  {type:"basic",region:"Sudamérica",question:"¿Cuántos Balones de Oro ganó Lionel Messi hasta 2023?",altQuestion:"¿Qué cantidad de Balones de Oro tiene Messi en el registro hasta 2023?",thirdQuestion:"¿Cuántos premios Balón de Oro suma Messi hasta 2023?",answer:"8",cat:"Balón de Oro"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué brasileño ganó el Balón de Oro de 2005?",altQuestion:"¿Quién ganó el Balón de Oro en 2005?",thirdQuestion:"¿Qué estrella de Brasil recibió el Balón de Oro de 2005?",answer:"Ronaldinho",cat:"Balón de Oro"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué brasileño ganó el Balón de Oro de 2007?",altQuestion:"¿Quién recibió el Balón de Oro en 2007?",thirdQuestion:"¿Qué jugador brasileño fue Balón de Oro en 2007?",answer:"Kaká",cat:"Balón de Oro"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué brasileño ganó el Balón de Oro de 1999?",altQuestion:"¿Quién ganó el premio en 1999?",thirdQuestion:"¿Qué jugador de Brasil fue Balón de Oro en 1999?",answer:"Rivaldo",cat:"Balón de Oro"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué brasileño ganó el Balón de Oro de 1997?",altQuestion:"¿Quién recibió el Balón de Oro de 1997?",thirdQuestion:"¿Qué delantero de Brasil ganó el premio en 1997?",answer:"Ronaldo Nazário",cat:"Balón de Oro"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué brasileño ganó el Balón de Oro de 2002?",altQuestion:"¿Quién fue el Balón de Oro de 2002?",thirdQuestion:"¿Qué delantero brasileño recibió el premio en 2002?",answer:"Ronaldo Nazário",cat:"Balón de Oro"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó la Copa América 2021?",altQuestion:"¿Quién fue campeón de la Copa América de 2021?",thirdQuestion:"¿Qué país levantó la Copa América 2021?",answer:"Argentina",cat:"Copa América"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó la Copa América 2011?",altQuestion:"¿Quién fue campeón de la Copa América 2011?",thirdQuestion:"¿Qué país ganó el torneo sudamericano de 2011?",answer:"Uruguay",cat:"Copa América"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó la Copa América 2015?",altQuestion:"¿Quién fue campeón de la Copa América 2015?",thirdQuestion:"¿Qué país ganó la edición de 2015?",answer:"Chile",cat:"Copa América"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó la Copa América 2016?",altQuestion:"¿Quién fue campeón de la Copa América Centenario?",thirdQuestion:"¿Qué país ganó la Copa América 2016?",answer:"Chile",cat:"Copa América"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección organizó y ganó la Copa América 2001?",altQuestion:"¿Qué país fue campeón de la Copa América 2001?",thirdQuestion:"¿Quién ganó el torneo continental de 2001?",answer:"Colombia",cat:"Copa América"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué colombiano ganó la Bota de Oro del Mundial 2014?",altQuestion:"¿Quién fue máximo goleador del Mundial 2014?",thirdQuestion:"¿Qué jugador de Colombia marcó más goles en Brasil 2014?",answer:"James Rodríguez",cat:"Bota de Oro"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué uruguayo ganó el Balón de Oro del Mundial 2010?",altQuestion:"¿Quién fue elegido mejor jugador de Sudáfrica 2010?",thirdQuestion:"¿Qué jugador de Uruguay recibió el premio al mejor jugador del Mundial 2010?",answer:"Diego Forlán",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué jugador argentino marcó tres goles contra Grecia en el Mundial 1994?",altQuestion:"¿Qué delantero hizo un hat-trick ante Grecia en 1994?",thirdQuestion:"¿Quién convirtió tres goles ante Grecia en Estados Unidos 1994?",answer:"Gabriel Batistuta",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué brasileño fue capitán en varios Mundiales y ganó dos Copas del Mundo?",altQuestion:"¿Qué histórico lateral brasileño ganó los Mundiales de 1994 y 2002?",thirdQuestion:"¿Quién fue una figura de Brasil y ganó dos Mundiales?",answer:"Cafú",cat:"Leyendas"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué delantero colombiano es conocido como 'El Tigre'?",altQuestion:"¿A qué futbolista colombiano apodan 'El Tigre'?",thirdQuestion:"¿Quién es conocido como 'El Tigre' en Colombia?",answer:"Radamel Falcao",cat:"Leyendas"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué chileno fue una de las figuras de las Copas América 2015 y 2016?",altQuestion:"¿Qué delantero chileno destacó en los títulos continentales de 2015 y 2016?",thirdQuestion:"¿Qué estrella de Chile ganó esas dos Copas América?",answer:"Alexis Sánchez",cat:"Copa América"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección sudamericana ganó el Mundial de 1962?",altQuestion:"¿Quién fue campeón del Mundial de Chile 1962?",thirdQuestion:"¿Qué país ganó la Copa del Mundo de 1962?",answer:"Brasil",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó el Mundial de 1994?",altQuestion:"¿Quién fue campeón de la Copa del Mundo de 1994?",thirdQuestion:"¿Qué país ganó el Mundial de Estados Unidos 1994?",answer:"Brasil",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué argentino es conocido como 'La Pulga'?",altQuestion:"¿Quién es apodado 'La Pulga'?",thirdQuestion:"¿Qué leyenda argentina recibió el apodo de 'La Pulga'?",answer:"Lionel Messi",cat:"Leyendas"},
 
-  {type:"clean",subject:"Fabien Barthez",answer:"10",cat:"Récords FIFA"},
-  {type:"clean",subject:"Peter Shilton",answer:"10",cat:"Récords FIFA"},
-  {type:"clean",subject:"Unai Simón",answer:"9",cat:"Récords FIFA"},
-  {type:"clean",subject:"Jan Jongbloed",answer:"8",cat:"Récords FIFA"},
-  {type:"clean",subject:"Leão",answer:"8",cat:"Récords FIFA"},
-  {type:"clean",subject:"Sepp Maier",answer:"8",cat:"Récords FIFA"},
-  {type:"clean",subject:"Taffarel",answer:"8",cat:"Récords FIFA"},
-  {type:"clean",subject:"Thibaut Courtois",answer:"8",cat:"Récords FIFA"},
-  {type:"clean",subject:"Hugo Lloris",answer:"8",cat:"Récords FIFA"},
-  {type:"clean",subject:"Alisson",answer:"7",cat:"Récords FIFA"},
-  {type:"clean",subject:"Gilmar",answer:"7",cat:"Récords FIFA"},
-  {type:"clean",subject:"Iker Casillas",answer:"7",cat:"Récords FIFA"},
-  {type:"clean",subject:"Fernando Muslera",answer:"7",cat:"Récords FIFA"},
-  {type:"clean",subject:"Manuel Neuer",answer:"7",cat:"Récords FIFA"},
-
-  {type:"ronaldo",answer:"145",cat:"Récords UEFA",question:"¿Cuántos goles tiene Cristiano Ronaldo en competiciones de clubes de UEFA?",altQuestion:"¿Qué cifra de goles ostenta Cristiano Ronaldo como récord en competiciones de clubes UEFA?",thirdQuestion:"¿Cuál es el récord de goles de Cristiano Ronaldo en competiciones de clubes de UEFA?",label:"goles en competiciones de clubes UEFA"},
-  {type:"ronaldo",answer:"140",cat:"Récords UEFA",question:"¿Cuántos goles tiene Cristiano Ronaldo en la Champions League?",altQuestion:"¿Cuál es el récord de goles de Cristiano Ronaldo en la Champions?",thirdQuestion:"¿Qué cifra de goles registra Cristiano Ronaldo en la Champions League?",label:"goles en Champions League"},
-  {type:"ronaldo",answer:"17",cat:"Récords UEFA",question:"¿Cuál es el récord de goles de Cristiano Ronaldo en una temporada de Champions?",altQuestion:"¿Cuántos goles marcó Cristiano Ronaldo en su temporada récord de Champions 2013/14?",thirdQuestion:"¿Qué cantidad de goles hizo Ronaldo en la Champions 2013/14?",label:"goles en la temporada 2013/14"},
-  {type:"ronaldo",answer:"67",cat:"Récords UEFA",question:"¿Cuántos goles marcó Cristiano Ronaldo en fases eliminatorias de Champions?",altQuestion:"¿Qué cifra de goles de eliminatorias de Champions posee Ronaldo?",thirdQuestion:"¿Cuántos goles de knockout de Champions tiene Cristiano Ronaldo?",label:"goles en eliminatorias"},
-  {type:"ronaldo",answer:"7",cat:"Récords UEFA",question:"¿En cuántas temporadas fue máximo goleador de la Champions Cristiano Ronaldo?",altQuestion:"¿Cuántas veces terminó Ronaldo como máximo goleador de la Champions?",thirdQuestion:"¿Cuántas temporadas lideró Ronaldo la tabla de goleadores de la Champions?",label:"temporadas como máximo goleador"},
-  {type:"ronaldo",answer:"183",cat:"Récords UEFA",question:"¿Cuántas apariciones tiene Cristiano Ronaldo en la Champions League?",altQuestion:"¿Qué cifra de partidos de Champions registra Ronaldo?",thirdQuestion:"¿Cuántas veces apareció Cristiano Ronaldo en la Champions según UEFA?",label:"apariciones en Champions"},
-  {type:"ronaldo",answer:"Tres finales",cat:"Récords UEFA",question:"¿En cuántas finales de Champions distintas fue capaz Cristiano Ronaldo de marcar?",altQuestion:"¿Cuántas finales de Champions tuvieron un gol de Ronaldo?",thirdQuestion:"¿En cuántas finales de Champions anotó Ronaldo?",label:"finales de Champions con gol"},
-  {type:"ronaldo",answer:"11 partidos consecutivos",cat:"Récords UEFA",question:"¿Cuál es la racha de partidos consecutivos de Champions en los que Ronaldo marcó?",altQuestion:"¿Cuántos partidos seguidos de Champions llegó a marcar Cristiano Ronaldo?",thirdQuestion:"¿Qué longitud tiene la racha de Ronaldo anotando en partidos consecutivos de Champions?",label:"racha consecutiva anotando"},
-  {type:"ronaldo",answer:"4",cat:"Récords UEFA",question:"¿Cuántos premios UEFA de Jugador del Año/Jugador del Año equivalente ganó Cristiano Ronaldo según UEFA?",altQuestion:"¿Cuántos reconocimientos de mejor jugador de UEFA acumula Ronaldo?",thirdQuestion:"¿Qué cantidad de premios UEFA como mejor jugador figura para Ronaldo?",label:"premios UEFA como mejor jugador"},
-  {type:"ronaldo",answer:"15",cat:"Récords UEFA",question:"¿Cuántas veces apareció Cristiano Ronaldo en el Equipo del Año de UEFA.com?",altQuestion:"¿Qué cifra de apariciones tiene Ronaldo en el Equipo del Año de UEFA.com?",thirdQuestion:"¿Cuántas selecciones al Equipo del Año de UEFA.com registra Cristiano Ronaldo?",label:"apariciones en el Equipo del Año"},
-
-  {type:"uclTitles",subject:"Real Madrid",answer:"15",cat:"Champions histórica"},
-  {type:"uclTitles",subject:"Milan",answer:"7",cat:"Champions histórica"},
-  {type:"uclTitles",subject:"Liverpool",answer:"6",cat:"Champions histórica"},
-  {type:"uclTitles",subject:"Bayern Múnich",answer:"6",cat:"Champions histórica"},
-  {type:"uclTitles",subject:"Barcelona",answer:"5",cat:"Champions histórica"},
-  {type:"uclTitles",subject:"Ajax",answer:"4",cat:"Champions histórica"},
-
-  {type:"uclAppsClub",subject:"Real Madrid",answer:"44",cat:"Champions histórica"},
-  {type:"uclAppsClub",subject:"Benfica",answer:"42",cat:"Champions histórica"},
-  {type:"uclAppsClub",subject:"Ajax",answer:"36",cat:"Champions histórica"},
-  {type:"uclAppsClub",subject:"Dynamo Kyiv",answer:"35",cat:"Champions histórica"},
-  {type:"uclAppsClub",subject:"Bayern Múnich",answer:"34",cat:"Champions histórica"},
-  {type:"uclAppsClub",subject:"Juventus",answer:"33",cat:"Champions histórica"}
+  // EUROPA — 28 temas
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó el Mundial de 1934?",altQuestion:"¿Quién fue campeón de la Copa del Mundo de 1934?",thirdQuestion:"¿Qué país ganó el Mundial de 1934?",answer:"Italia",cat:"Mundiales"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó el Mundial de 1966?",altQuestion:"¿Quién fue campeón del Mundial de 1966?",thirdQuestion:"¿Qué país ganó la Copa del Mundo de 1966?",answer:"Inglaterra",cat:"Mundiales"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó el Mundial de 1998?",altQuestion:"¿Quién fue campeón del Mundial de Francia 1998?",thirdQuestion:"¿Qué país ganó la Copa del Mundo de 1998?",answer:"Francia",cat:"Mundiales"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó el Mundial de 2006?",altQuestion:"¿Quién fue campeón del Mundial de Alemania 2006?",thirdQuestion:"¿Qué país ganó la Copa del Mundo de 2006?",answer:"Italia",cat:"Mundiales"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó el Mundial de 2010?",altQuestion:"¿Quién fue campeón del Mundial de Sudáfrica 2010?",thirdQuestion:"¿Qué país ganó la Copa del Mundo de 2010?",answer:"España",cat:"Mundiales"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó el Mundial de 2014?",altQuestion:"¿Quién fue campeón del Mundial de Brasil 2014?",thirdQuestion:"¿Qué país ganó la Copa del Mundo de 2014?",answer:"Alemania",cat:"Mundiales"},
+  {type:"basic",region:"Europa",question:"¿Qué inglés ganó la Bota de Oro del Mundial 2018?",altQuestion:"¿Quién fue máximo goleador del Mundial de Rusia 2018?",thirdQuestion:"¿Qué delantero inglés ganó la Bota de Oro en 2018?",answer:"Harry Kane",cat:"Bota de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué francés ganó la Bota de Oro del Mundial 2022?",altQuestion:"¿Quién fue el máximo goleador de Catar 2022?",thirdQuestion:"¿Qué delantero francés terminó como goleador del Mundial 2022?",answer:"Kylian Mbappé",cat:"Bota de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué portugués ganó la Bota de Oro del Mundial 1966?",altQuestion:"¿Quién fue el máximo goleador de Inglaterra 1966?",thirdQuestion:"¿Qué leyenda portuguesa terminó como goleador del Mundial 1966?",answer:"Eusébio",cat:"Bota de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué alemán ganó la Bota de Oro del Mundial 1970?",altQuestion:"¿Quién fue máximo goleador de México 1970?",thirdQuestion:"¿Qué delantero alemán terminó como goleador del Mundial 1970?",answer:"Gerd Müller",cat:"Bota de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué francés ganó el Balón de Oro de 1998?",altQuestion:"¿Quién recibió el Balón de Oro en 1998?",thirdQuestion:"¿Qué estrella francesa ganó el premio en 1998?",answer:"Zinedine Zidane",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué croata ganó el Balón de Oro de 2018?",altQuestion:"¿Quién recibió el Balón de Oro en 2018?",thirdQuestion:"¿Qué capitán de Croacia fue Balón de Oro en 2018?",answer:"Luka Modrić",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué francés ganó el Balón de Oro de 2022?",altQuestion:"¿Quién recibió el Balón de Oro en 2022?",thirdQuestion:"¿Qué delantero francés fue Balón de Oro en 2022?",answer:"Karim Benzema",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué portugués ganó el Balón de Oro de 2008?",altQuestion:"¿Quién recibió el Balón de Oro en 2008?",thirdQuestion:"¿Qué estrella portuguesa ganó el premio en 2008?",answer:"Cristiano Ronaldo",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué checo ganó el Balón de Oro de 2003?",altQuestion:"¿Quién recibió el Balón de Oro en 2003?",thirdQuestion:"¿Qué jugador de República Checa ganó el premio en 2003?",answer:"Pavel Nedvěd",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué italiano ganó el Balón de Oro de 2006?",altQuestion:"¿Quién recibió el Balón de Oro en 2006?",thirdQuestion:"¿Qué capitán de Italia fue Balón de Oro en 2006?",answer:"Fabio Cannavaro",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué inglés ganó el Balón de Oro de 2001?",altQuestion:"¿Quién recibió el Balón de Oro en 2001?",thirdQuestion:"¿Qué futbolista inglés ganó el premio en 2001?",answer:"Michael Owen",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué ucraniano ganó el Balón de Oro de 2004?",altQuestion:"¿Quién recibió el Balón de Oro en 2004?",thirdQuestion:"¿Qué delantero de Ucrania ganó el premio en 2004?",answer:"Andriy Shevchenko",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué portugués ganó la Eurocopa 2016?",altQuestion:"¿Quién fue campeón de la Euro 2016?",thirdQuestion:"¿Qué país ganó la Eurocopa de 2016?",answer:"Portugal",cat:"Eurocopa"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó la Eurocopa 2008?",altQuestion:"¿Quién fue campeón de la Euro 2008?",thirdQuestion:"¿Qué país ganó el torneo europeo de 2008?",answer:"España",cat:"Eurocopa"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó la Eurocopa 2012?",altQuestion:"¿Quién fue campeón de la Euro 2012?",thirdQuestion:"¿Qué país ganó la Eurocopa de 2012?",answer:"España",cat:"Eurocopa"},
+  {type:"basic",region:"Europa",question:"¿Qué club tiene más Copas de Europa/Champions League?",altQuestion:"¿Quién lidera el historial de títulos de la Champions?",thirdQuestion:"¿Qué club ganó más veces la principal copa europea de clubes?",answer:"Real Madrid",cat:"Champions"},
+  {type:"basic",region:"Europa",question:"¿Qué club tiene siete Copas de Europa/Champions League?",altQuestion:"¿Qué equipo ganó siete veces la Champions?",thirdQuestion:"¿Qué club suma siete títulos de la máxima copa europea?",answer:"Milan",cat:"Champions"},
+  {type:"basic",region:"Europa",question:"¿Qué club tiene seis Copas de Europa/Champions League?",altQuestion:"¿Qué equipo ganó seis veces la Champions?",thirdQuestion:"¿Qué club suma seis títulos de la máxima copa europea?",answer:"Liverpool",cat:"Champions"},
+  {type:"basic",region:"Europa",question:"¿Qué club alemán tiene seis Copas de Europa/Champions League?",altQuestion:"¿Qué equipo alemán ganó seis veces la Champions?",thirdQuestion:"¿Qué club de Alemania suma seis títulos europeos?",answer:"Bayern Múnich",cat:"Champions"},
+  {type:"basic",region:"Europa",question:"¿Qué club español ganó cinco Copas de Europa/Champions League?",altQuestion:"¿Qué equipo español suma cinco títulos de Champions?",thirdQuestion:"¿Qué club español ganó cinco veces la máxima copa europea?",answer:"Barcelona",cat:"Champions"},
+  {type:"basic",region:"Europa",question:"¿Qué club neerlandés ganó cuatro Copas de Europa/Champions League?",altQuestion:"¿Qué equipo de Países Bajos suma cuatro Champions?",thirdQuestion:"¿Qué club neerlandés ganó cuatro veces la máxima copa europea?",answer:"Ajax",cat:"Champions"},
+  {type:"basic",region:"Europa",question:"¿Qué jugador ganó el Balón de Oro de 2000?",altQuestion:"¿Quién recibió el Balón de Oro en 2000?",thirdQuestion:"¿Qué estrella portuguesa ganó el premio en el año 2000?",answer:"Luís Figo",cat:"Balón de Oro"}
 ];
-
 const IMPOSSIBLE_FACTS = [
   {player:"Bert Patenaude",team:"Estados Unidos",opponent:"Paraguay",year:"1930",cat:"Hat-tricks"},
   {player:"Guillermo Stábile",team:"Argentina",opponent:"México",year:"1930",cat:"Hat-tricks"},
@@ -289,7 +287,7 @@ function expandImpossible(facts){
 }
 
 const EASY=expandSimple(EASY_FACTS,"facil",SIMPLE_TEMPLATES);
-const HARD=expandSimple(HARD_FACTS,"dificil",HARD_TEMPLATES);
+const NORMAL=expandSimple(NORMAL_FACTS,"dificil",SIMPLE_TEMPLATES);
 const IMPOSSIBLE=expandImpossible(IMPOSSIBLE_FACTS);
 
 const BLASSVEC = [
@@ -325,14 +323,14 @@ const BLASSVEC = [
   ["Blassvec","¿Cuántas porterías hay en una cancha de fútbol?",["Dos","Una","Cuatro"],0,"blassvec"]
 ];
 
-if(EASY.length!==168 || HARD.length!==168 || IMPOSSIBLE.length!==168 || BLASSVEC.length!==30)
+if(EASY.length!==168 || NORMAL.length!==168 || IMPOSSIBLE.length!==168 || BLASSVEC.length!==30)
   throw new Error(`Banco inválido: fácil=${EASY.length}, difícil=${HARD.length}, imposible=${IMPOSSIBLE.length}, blassvec=${BLASSVEC.length}`);
 
 export const QUESTIONS=[...EASY,...HARD,...IMPOSSIBLE,...BLASSVEC];
 export const QUESTION_SETS={
   facil:EASY.map((_,i)=>i),
-  dificil:HARD.map((_,i)=>168+i),
+  dificil:NORMAL.map((_,i)=>168+i),
   imposible:IMPOSSIBLE.map((_,i)=>336+i),
   blassvec:BLASSVEC.map((_,i)=>504+i)
 };
-export const QUESTION_COUNTS={facil:EASY.length,dificil:HARD.length,imposible:IMPOSSIBLE.length,blassvec:BLASSVEC.length};
+export const QUESTION_COUNTS={facil:EASY.length,dificil:NORMAL.length,imposible:IMPOSSIBLE.length,blassvec:BLASSVEC.length};
