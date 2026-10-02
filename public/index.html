@@ -595,7 +595,7 @@ async function loadDev(){
       (viewerOwner?"<button class='btn gold dev-coins' data-id='"+r.id+"' data-delta='-1000'>−1000 🪙</button>":"")+
       (viewerOwner&&!r.owner?"<button class='btn dev-beta' data-id='"+r.id+"' data-enabled='"+(!r.betaTester)+"'>"+(r.betaTester?"Quitar BETA":"Dar BETA TESTER")+"</button>":"")+
       (viewerOwner?"<button class='btn dev-password' data-id='"+r.id+"'>🔑 Cambiar contraseña</button><button class='btn dev-notify' data-id='"+r.id+"'>🔔 Probar noti</button>":"")+
-      "<button class='btn dev-action' data-id='"+r.id+"' data-action='"+(r.status==="active"?"block":"unblock")+"'>"+(r.status==="active"?"Bloquear":"Desbloquear")+"</button><button class='btn danger dev-action' data-id='"+r.id+"' data-action='reset'>Reset</button>"+
+      "<button class='btn dev-action' data-id='"+r.id+"' data-action='"+(r.status==="active"?"block":"unblock")+"'>"+(r.status==="active"?"Bloquear":"Desbloquear")+"</button><button class='btn danger dev-action' data-id='"+r.id+"' data-action='reset'>🗑️ Borrar cuenta</button>"+
       "</td></tr>";
   }).join("");
   $("devUsers").innerHTML="<table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Puntos</th><th>Partidas</th><th>Monedas</th><th>Estilo</th><th>Acciones</th></tr></thead><tbody>"+rows+"</tbody></table>";
@@ -607,6 +607,20 @@ async function loadDev(){
   document.querySelectorAll(".dev-notify").forEach(b=>b.onclick=()=>devTestPasswordNotification(Number(b.dataset.id)));
   document.querySelectorAll(".dev-action").forEach(b=>b.onclick=()=>devAction(Number(b.dataset.id),b.dataset.action));
   $("devAudit").innerHTML="<h3>Registro</h3><table><thead><tr><th>Fecha</th><th>Admin</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>"+(a.logs||[]).map(l=>"<tr><td>"+new Date(l.createdAt).toLocaleString()+"</td><td>"+escapeHtml(l.actor||"—")+"</td><td>"+escapeHtml(l.action||"")+"</td><td>"+escapeHtml(l.details||"")+"</td></tr>").join("")+"</tbody></table>";
+}
+async function devAction(id,action){
+  if(action==="reset"){
+    if(!confirm("⚠️ Esto BORRARÁ la cuenta completa, sus sesiones, partidas, estilos, colores, notificaciones y regalo diario. Esta acción no se puede deshacer. ¿Continuar?"))return;
+  }else if(action==="block"){
+    if(!confirm("¿Bloquear esta cuenta?"))return;
+  }else if(action==="unblock"){
+    if(!confirm("¿Desbloquear esta cuenta?"))return;
+  }
+  try{
+    const x=await api("/api/dev/users/"+id+"/"+action,{method:"POST",body:"{}"});
+    if(x.deleted && user && user.id===id){await logout();return}
+    await loadDev();await loadRanking();
+  }catch(e){alert(e.message||"No se pudo completar la acción.")}
 }
 async function devScore(id,delta){
   if(!confirm((delta>0?"+":"")+delta+" puntos?"))return;
