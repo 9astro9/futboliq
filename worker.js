@@ -136,8 +136,15 @@ async function ensureDatabase(env) {
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id,read_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_broadcast_created ON broadcast_messages(created_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_daily_gifts_date ON daily_gifts(claim_date)"),
-      env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_nocase ON users(username COLLATE NOCASE)")
     ]);
+
+    // Este índice es útil, pero no debe dejar fuera de servicio el juego si una
+    // base antigua ya contiene nombres que solo difieren en mayúsculas/minúsculas.
+    try {
+      await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_nocase ON users(username COLLATE NOCASE)").run();
+    } catch(e) {
+      console.warn("[db:username-index]",e);
+    }
 
     const userInfo=await env.DB.prepare("PRAGMA table_info(users)").all();
     const userCols=new Set((userInfo.results||[]).map(r=>r.name));
