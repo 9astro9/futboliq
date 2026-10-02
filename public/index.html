@@ -605,10 +605,10 @@ async function loadDev(){
   document.querySelectorAll(".dev-beta").forEach(b=>b.onclick=()=>devBeta(Number(b.dataset.id),b.dataset.enabled==="true"));
   document.querySelectorAll(".dev-password").forEach(b=>b.onclick=()=>devPassword(Number(b.dataset.id)));
   document.querySelectorAll(".dev-notify").forEach(b=>b.onclick=()=>devTestPasswordNotification(Number(b.dataset.id)));
-  document.querySelectorAll(".dev-action").forEach(b=>b.onclick=()=>devAction(Number(b.dataset.id),b.dataset.action));
+  document.querySelectorAll(".dev-action").forEach(b=>b.onclick=()=>window.devAction(Number(b.dataset.id),b.dataset.action));
   $("devAudit").innerHTML="<h3>Registro</h3><table><thead><tr><th>Fecha</th><th>Admin</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>"+(a.logs||[]).map(l=>"<tr><td>"+new Date(l.createdAt).toLocaleString()+"</td><td>"+escapeHtml(l.actor||"—")+"</td><td>"+escapeHtml(l.action||"")+"</td><td>"+escapeHtml(l.details||"")+"</td></tr>").join("")+"</tbody></table>";
 }
-async function devAction(id,action){
+window.devAction = async function devAction(id,action){
   if(action==="reset"){
     if(!confirm("⚠️ Esto BORRARÁ la cuenta completa, sus sesiones, partidas, estilos, colores, notificaciones y regalo diario. Esta acción no se puede deshacer. ¿Continuar?"))return;
   }else if(action==="block"){
