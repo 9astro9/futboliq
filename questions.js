@@ -333,14 +333,25 @@ function optionSet(pool,answer,seed){
 
 function expandSimple(facts,difficulty,templates){
   const allFacts=[...facts];
-  const players=[...new Set(allFacts.filter(f=>answerEntity(f)==="player").map(f=>f.answer))];
-  const clubs=[...new Set(allFacts.filter(f=>answerEntity(f)==="club").map(f=>f.answer))];
-  const nations=[...new Set(allFacts.filter(f=>answerEntity(f)==="nation").map(f=>f.answer))];
-  const rules=[...new Set(allFacts.filter(f=>answerEntity(f)==="rule").map(f=>f.answer))];
+  const globalPools={player:[],club:[],nation:[],rule:[],tournament:TOURNAMENT_POOL};
+  const categoryPools=new Map();
+  for(const fact of allFacts){
+    const entity=answerEntity(fact);
+    const answer=fact.answer;
+    if(globalPools[entity])globalPools[entity].push(answer);
+    const key=fact.cat+"|"+entity;
+    if(!categoryPools.has(key))categoryPools.set(key,[]);
+    categoryPools.get(key).push(answer);
+  }
+  for(const key of Object.keys(globalPools))globalPools[key]=[...new Set(globalPools[key])];
+  for(const [key,pool] of categoryPools)categoryPools.set(key,[...new Set(pool)]);
   const out=[];
   facts.forEach((fact,i)=>{
-    const entity=answerEntity(fact);
-    const pool=entity==="player"?players:entity==="club"?clubs:entity==="nation"?nations:entity==="rule"?rules:entity==="tournament"?TOURNAMENT_POOL:allFacts.map(f=>f.answer);
+    const entity=answerEntity(fact),key=fact.cat+"|"+entity;
+    const categoryPool=categoryPools.get(key)||[];
+    const globalPool=globalPools[entity]||allFacts.map(f=>f.answer);
+    const usable=categoryPool.filter(x=>x!==fact.answer);
+    const pool=usable.length>=2?categoryPool:(entity==="tournament"?TOURNAMENT_POOL:globalPool);
     for(let v=0;v<3;v++){
       const answer=fact.answer;
       const question=smartQuestion(templates[fact.type][v](fact),fact);
