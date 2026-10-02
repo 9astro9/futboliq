@@ -292,13 +292,47 @@ const EASY=expandSimple(EASY_FACTS,"facil",SIMPLE_TEMPLATES);
 const HARD=expandSimple(HARD_FACTS,"dificil",HARD_TEMPLATES);
 const IMPOSSIBLE=expandImpossible(IMPOSSIBLE_FACTS);
 
-if(EASY.length!==168 || HARD.length!==168 || IMPOSSIBLE.length!==168)
-  throw new Error(`Banco inválido: fácil=${EASY.length}, difícil=${HARD.length}, imposible=${IMPOSSIBLE.length}`);
+const BLASSVEC = [
+  ["Blassvec","¿Qué deporte juega Lionel Messi?",["Fútbol","Tenis","Básquetbol"],0,"blassvec"],
+  ["Blassvec","¿Con qué se juega principalmente al fútbol?",["Pelota","Raqueta","Bate"],0,"blassvec"],
+  ["Blassvec","¿Cuántos equipos juegan un partido de fútbol?",["Dos","Tres","Cuatro"],0,"blassvec"],
+  ["Blassvec","¿Cuántos jugadores tiene un equipo en cancha?",["11","7","15"],0,"blassvec"],
+  ["Blassvec","¿Qué se intenta marcar en fútbol?",["Goles","Canastas","Puntos"],0,"blassvec"],
+  ["Blassvec","¿Quién puede usar las manos dentro de su área?",["Arquero","Delantero","Mediocampista"],0,"blassvec"],
+  ["Blassvec","¿Qué tarjeta es una expulsión?",["Roja","Amarilla","Azul"],0,"blassvec"],
+  ["Blassvec","¿Qué tarjeta es una advertencia?",["Amarilla","Roja","Verde"],0,"blassvec"],
+  ["Blassvec","¿Cómo se llama el lugar donde se juega al fútbol?",["Cancha","Piscina","Pista"],0,"blassvec"],
+  ["Blassvec","¿Cómo se llama el jugador que ataja?",["Arquero","Delantero","Árbitro"],0,"blassvec"],
+  ["Blassvec","¿Qué parte del cuerpo usa normalmente un jugador de campo?",["Pie","Aleta","Raqueta"],0,"blassvec"],
+  ["Blassvec","¿Qué hace el árbitro para detener una jugada?",["Usa el silbato","Patea la pelota","Se pone a correr"],0,"blassvec"],
+  ["Blassvec","¿Cómo se llama el saque que se hace desde una esquina?",["Córner","Lateral","Penal"],0,"blassvec"],
+  ["Blassvec","¿Cómo se llama el tiro desde los 11 metros?",["Penal","Córner","Lateral"],0,"blassvec"],
+  ["Blassvec","¿Cuánto dura normalmente un partido?",["90 minutos","30 minutos","120 minutos"],0,"blassvec"],
+  ["Blassvec","¿Cuántos tiempos tiene un partido?",["2","3","4"],0,"blassvec"],
+  ["Blassvec","¿Cuánto dura normalmente cada tiempo?",["45 minutos","20 minutos","60 minutos"],0,"blassvec"],
+  ["Blassvec","¿Qué club es conocido como Real Madrid?",["Un club de fútbol","Una selección nacional","Un torneo"],0,"blassvec"],
+  ["Blassvec","¿De qué país es la selección de Uruguay?",["Uruguay","Argentina","Brasil"],0,"blassvec"],
+  ["Blassvec","¿De qué país es la selección de Argentina?",["Argentina","Chile","Paraguay"],0,"blassvec"],
+  ["Blassvec","¿De qué país es la selección de Brasil?",["Brasil","Portugal","México"],0,"blassvec"],
+  ["Blassvec","¿Qué jugador es conocido como O Rei?",["Pelé","Messi","Xavi"],0,"blassvec"],
+  ["Blassvec","¿Quién es conocido como La Pulga?",["Lionel Messi","Pelé","Buffon"],0,"blassvec"],
+  ["Blassvec","¿Qué selección viste tradicionalmente de celeste?",["Uruguay","Italia","Alemania"],0,"blassvec"],
+  ["Blassvec","¿Qué se usa para marcar el resultado de un partido?",["Marcador","Termómetro","Calendario"],0,"blassvec"],
+  ["Blassvec","Si un equipo marca un gol, ¿qué aumenta?",["Su cantidad de goles","Su número de jugadores","La duración del campo"],0,"blassvec"],
+  ["Blassvec","¿Qué forma tiene una pelota de fútbol?",["Redonda","Cuadrada","Triangular"],0,"blassvec"],
+  ["Blassvec","¿Qué objeto usa un arquero en las manos?",["Guantes","Raqueta","Casco de bicicleta"],0,"blassvec"],
+  ["Blassvec","¿Qué palabra gritás cuando tu equipo marca?",["¡Gol!","¡Ace!","¡Canasta!"],0,"blassvec"],
+  ["Blassvec","¿Cuántas porterías hay en una cancha de fútbol?",["Dos","Una","Cuatro"],0,"blassvec"]
+];
 
-export const QUESTIONS=[...EASY,...HARD,...IMPOSSIBLE];
+if(EASY.length!==168 || HARD.length!==168 || IMPOSSIBLE.length!==168 || BLASSVEC.length!==30)
+  throw new Error(`Banco inválido: fácil=${EASY.length}, difícil=${HARD.length}, imposible=${IMPOSSIBLE.length}, blassvec=${BLASSVEC.length}`);
+
+export const QUESTIONS=[...EASY,...HARD,...IMPOSSIBLE,...BLASSVEC];
 export const QUESTION_SETS={
   facil:EASY.map((_,i)=>i),
   dificil:HARD.map((_,i)=>168+i),
-  imposible:IMPOSSIBLE.map((_,i)=>336+i)
+  imposible:IMPOSSIBLE.map((_,i)=>336+i),
+  blassvec:BLASSVEC.map((_,i)=>504+i)
 };
-export const QUESTION_COUNTS={facil:EASY.length,dificil:HARD.length,imposible:IMPOSSIBLE.length};
+export const QUESTION_COUNTS={facil:EASY.length,dificil:HARD.length,imposible:IMPOSSIBLE.length,blassvec:BLASSVEC.length};
