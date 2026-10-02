@@ -1,1 +1,132 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FUTBOLIQ</title><style>:root{--bg:#0b1020;--card:#121a2e;--text:#f4f6fb;--muted:#9da7bb;--accent:#36d399}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px system-ui;max-width:900px;margin:auto;padding:24px}header{display:flex;justify-content:space-between;align-items:center;gap:16px}.brand{display:flex;align-items:center;gap:10px;font-size:28px;font-weight:800}.ball{width:40px;height:40px;border:3px solid var(--accent);border-radius:50%;display:grid;place-items:center}.card{background:var(--card);border-radius:16px;padding:22px;margin-top:20px}button,input{font:inherit;border-radius:10px;padding:12px}button{border:0;cursor:pointer;background:var(--accent);color:#06120d;font-weight:700;margin:5px}input{width:100%;border:1px solid #33405d;background:#0d1425;color:white;margin:5px 0}.opts button{display:block;width:100%;text-align:left;background:#202b45;color:white}.hidden{display:none}.muted{color:var(--muted)}table{width:100%;border-collapse:collapse}td,th{padding:9px;text-align:left;border-bottom:1px solid #28344d}</style></head><body><header><div class="brand"><span class="ball">F</span>FUTBOLIQ</div><div id="who"></div></header><section id="auth" class="card"><h2>Cuenta</h2><input id="user" placeholder="Usuario"><input id="pass" type="password" placeholder="Contraseña"><button onclick="reg()">Crear cuenta</button><button onclick="login()">Iniciar sesión</button><p id="msg" class="muted"></p></section><section id="game" class="card hidden"><div id="q"></div><div class="opts" id="opts"></div><p>Puntos: <b id="score">0</b></p><button onclick="logout()">Cerrar sesión</button></section><section class="card"><h2>Ranking global</h2><table><thead><tr><th>#</th><th>Jugador</th><th>Puntos</th><th>Partidas</th></tr></thead><tbody id="rank"></tbody></table></section><script>let game=null,score=0;const $=x=>document.getElementById(x);async function api(p,o={}){return fetch(p,{headers:{"content-type":"application/json"},...o}).then(x=>x.json())}async function reg(){let x=await api("/api/register",{method:"POST",body:JSON.stringify({username:$("user").value,password:$("pass").value})});$("msg").textContent=x.error||"Cuenta creada";if(x.user)start()}async function login(){let x=await api("/api/login",{method:"POST",body:JSON.stringify({username:$("user").value,password:$("pass").value})});$("msg").textContent=x.error||"";if(x.user)start()}async function start(){let x=await api("/api/game",{method:"POST",body:"{}"});game=x.gameId;score=0;$("auth").classList.add("hidden");$("game").classList.remove("hidden");show(x.question)}function show(q){$("q").innerHTML="<h2>"+q.q+"</h2><p class='muted'>"+q.category+"</p>";$("opts").innerHTML=q.options.map((o,i)=>"<button onclick='ans("+i+")'>"+o+"</button>").join("")}async function ans(i){let x=await api("/api/answer",{method:"POST",body:JSON.stringify({gameId:game,choice:i})});score=x.score;$("score").textContent=score;if(x.done){alert("Partida terminada. Puntos: "+score);game=null;load()}else show(x.question)}async function load(){let x=await api("/api/ranking");$("rank").innerHTML=x.ranking.map((r,i)=>"<tr><td>"+(i+1)+"</td><td>"+r.username+"</td><td>"+r.score+"</td><td>"+r.games+"</td></tr>").join("")}async function logout(){await api("/api/logout",{method:"POST",body:"{}"});location.reload()}load();</script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FUTBOLIQ — Quiz de fútbol</title>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<style>
+:root{--bg:#080c15;--card:#111827;--card2:#0d1422;--text:#f3f4f6;--muted:#9ca3af;--line:#263247;--accent:#35d39a;--danger:#f87171;--shadow:0 14px 35px rgba(0,0,0,.25)}
+:root.light{--bg:#eef2f7;--card:#fff;--card2:#f7f9fc;--text:#101827;--muted:#5f6b7b;--line:#d9e0ea;--shadow:0 10px 25px rgba(15,23,42,.09)}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,rgba(53,211,154,.08),transparent 25%),var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:1050px;margin:auto;padding:22px}.top{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}.brand{display:flex;align-items:center;gap:12px;font-size:28px;font-weight:900;letter-spacing:-.04em}.logo{width:42px;height:42px;border:2px solid var(--accent);border-radius:13px;position:relative;display:grid;place-items:center;font-weight:950}.logo:before{content:"";width:15px;height:15px;border:2px solid var(--accent);border-radius:50%}.actions{display:flex;gap:8px;flex-wrap:wrap}button,select,input{font:inherit}.btn{border:1px solid var(--line);background:var(--card);color:var(--text);padding:10px 13px;border-radius:10px;cursor:pointer}.btn.primary{background:var(--accent);border-color:var(--accent);color:#06130e;font-weight:800}.btn.danger{background:transparent;border-color:rgba(248,113,113,.45);color:var(--danger)}.grid{display:grid;grid-template-columns:1.6fr .9fr;gap:18px;margin-top:20px}.card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow)}.hidden{display:none!important}.muted{color:var(--muted)}.title{font-size:30px;margin:0 0 5px}.hero{padding:34px}.question{font-size:24px;line-height:1.25;margin:10px 0 16px}.options{display:grid;gap:10px}.option{width:100%;text-align:left;background:var(--card2)}.status{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted)}.status strong{color:var(--text)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-weight:600}.auth{max-width:440px;margin:26px auto}.field{display:grid;gap:6px;margin:10px 0}input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--text)}.tabs{display:flex;gap:8px;margin-bottom:15px}.settings{display:grid;gap:12px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}.dev table button{padding:6px 8px;margin:2px}.small{font-size:13px}.notice{min-height:22px}.footer{padding:22px 0;color:var(--muted);font-size:13px;text-align:center}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.hero{padding:22px}.question{font-size:21px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="brand"><span class="logo">F</span><span>FUTBOLIQ</span></div>
+  <div class="actions">
+    <button class="btn" onclick="openSettings()">Configuración</button>
+    <span id="accountArea"></span>
+  </div>
+</header>
+
+<section id="auth" class="card auth">
+  <div class="tabs">
+    <button class="btn primary" id="tabLogin" onclick="switchAuth('login')">Entrar</button>
+    <button class="btn" id="tabRegister" onclick="switchAuth('register')">Crear cuenta</button>
+  </div>
+  <div class="field"><label>Usuario</label><input id="username" maxlength="16" autocomplete="username"></div>
+  <div class="field"><label>Contraseña</label><input id="password" type="password" maxlength="128" autocomplete="current-password"></div>
+  <div id="turnstileBox"></div>
+  <button class="btn primary" style="width:100%" onclick="submitAuth()" id="authBtn">Iniciar sesión</button>
+  <div id="authMsg" class="notice muted"></div>
+  <p class="small muted">Necesitas una cuenta para jugar y aparecer en el ranking global.</p>
+</section>
+
+<div id="app" class="hidden">
+  <div class="grid">
+    <main class="card hero">
+      <div class="status"><span>Jugador: <strong id="playerName"></strong></span><span>Puntos: <strong id="score">0</strong></span></div>
+      <div id="gameArea" style="margin-top:16px"></div>
+    </main>
+    <aside class="card">
+      <h2 style="margin-top:0">Ranking global</h2>
+      <div id="ranking" class="table-wrap"></div>
+    </aside>
+  </div>
+
+  <section id="settings" class="card hidden">
+    <h2>Configuración</h2>
+    <div class="settings">
+      <div class="row"><span>Idioma</span><select id="lang" onchange="setLang(this.value)" style="max-width:180px"><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option></select></div>
+      <div class="row"><span>Sonidos</span><button class="btn" id="soundBtn" onclick="toggleSound()"></button></div>
+      <div class="row"><span>Modo oscuro</span><button class="btn" id="themeBtn" onclick="toggleTheme()"></button></div>
+    </div>
+  </section>
+
+  <section id="devPanel" class="card hidden dev">
+    <h2 style="margin-top:0">Consola de desarrollador</h2>
+    <p class="muted small">Acceso administrativo. Los cambios se aplican en el servidor.</p>
+    <div id="devStats" class="status"></div>
+    <div id="devUsers" class="table-wrap" style="margin-top:12px"></div>
+    <div id="devAudit" class="table-wrap" style="margin-top:18px"></div>
+    <button class="btn danger" onclick="closeDev()">Cerrar consola</button>
+  </section>
+</div>
+<div class="footer">FUTBOLIQ · Quiz de fútbol</div>
+</div>
+<script>
+let mode="login", user=null, gameId=null, devOpen=false;
+let sound=localStorage.getItem("fql_sound")!=="off";
+let theme=localStorage.getItem("fql_theme")||"dark";
+let lang=localStorage.getItem("fql_lang")||"es";
+let widgetId=null;
+const $=id=>document.getElementById(id);
+const T={
+es:{login:"Iniciar sesión",register:"Crear cuenta",account:"Cuenta",start:"Empezar partida",next:"Siguiente",finish:"Partida terminada",points:"Puntos",settings:"Configuración",soundOn:"Activado",soundOff:"Desactivado",dark:"Oscuro",light:"Claro"},
+en:{login:"Log in",register:"Create account",account:"Account",start:"Start game",next:"Next",finish:"Game over",points:"Points",settings:"Settings",soundOn:"On",soundOff:"Off",dark:"Dark",light:"Light"},
+pt:{login:"Entrar",register:"Criar conta",account:"Conta",start:"Começar partida",next:"Próxima",finish:"Partida terminada",points:"Pontos",settings:"Configuração",soundOn:"Ativado",soundOff:"Desativado",dark:"Escuro",light:"Claro"}
+};
+function tr(k){return (T[lang]||T.es)[k]||k}
+function applyPrefs(){document.documentElement.classList.toggle("light",theme==="light");$("soundBtn").textContent=sound?tr("soundOn"):tr("soundOff");$("themeBtn").textContent=theme==="dark"?tr("dark"):tr("light");$("lang").value=lang}
+function setLang(v){lang=v;localStorage.setItem("fql_lang",v);applyPrefs();if(gameId) refreshMe()}
+function toggleSound(){sound=!sound;localStorage.setItem("fql_sound",sound?"on":"off");applyPrefs();if(sound)beep(660)}
+function toggleTheme(){theme=theme==="dark"?"light":"dark";localStorage.setItem("fql_theme",theme);applyPrefs()}
+function beep(freq=520){if(!sound)return;try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;g.gain.value=.04;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.08)}catch{}}
+function openSettings(){$("settings").classList.toggle("hidden")}
+function api(path,options={}){return fetch(path,{credentials:"same-origin",headers:{"content-type":"application/json",...(options.headers||{})},...options}).then(async r=>{let x={};try{x=await r.json()}catch{};if(!r.ok)throw new Error(x.error||"Error");return x})}
+function switchAuth(m){mode=m;$("authBtn").textContent=tr(m==="login"?"login":"register");$("tabLogin").className="btn"+(m==="login"?" primary":"");$("tabRegister").className="btn"+(m==="register"?" primary":"");resetTurnstile()}
+function resetTurnstile(){if(widgetId!==null && window.turnstile){try{turnstile.reset(widgetId)}catch{}}}
+function renderTurnstile(){api("/api/config").then(c=>{if(!c.turnstileSiteKey){$("turnstileBox").innerHTML="<div class='small muted'>CAPTCHA listo para producción; falta configurar la Site Key en Cloudflare.</div>";return}window.__tsSiteKey=c.turnstileSiteKey;if(window.turnstile && widgetId===null){widgetId=turnstile.render("#turnstileBox",{sitekey:c.turnstileSiteKey,theme:theme==="dark"?"dark":"light"})}}).catch(()=>{})}
+function tokenValue(){return window.turnstile && widgetId!==null ? turnstile.getResponse(widgetId):""}
+async function submitAuth(){
+  $("authMsg").textContent="Comprobando…";
+  try{
+    const x=await api(mode==="login"?"/api/login":"/api/register",{method:"POST",body:JSON.stringify({username:$("username").value,password:$("password").value,turnstileToken:tokenValue()})});
+    user=x.user;$("auth").classList.add("hidden");$("app").classList.remove("hidden");$("playerName").textContent=user.username;startGame();loadRanking();
+  }catch(e){$("authMsg").textContent=e.message;resetTurnstile()}
+}
+async function refreshMe(){try{const x=await api("/api/me");user=x.user;if(user){$("playerName").textContent=user.username}}catch{}}
+async function startGame(){
+  try{const x=await api("/api/game",{method:"POST",body:"{}"});gameId=x.gameId;$("score").textContent="0";showQuestion(x.question)}catch(e){$("gameArea").innerHTML="<p class='muted'>"+e.message+"</p>"}
+}
+function showQuestion(q){
+  $("gameArea").innerHTML="<div class='muted small'>"+q.category+"</div><h1 class='question'>"+escapeHtml(q.q)+"</h1><div class='options'>"+q.options.map((o,i)=>"<button class='btn option' onclick='answer("+i+")'>"+escapeHtml(o)+"</button>").join("")+"</div>";
+}
+async function answer(i){
+  document.querySelectorAll(".option").forEach(b=>b.disabled=true);
+  try{const x=await api("/api/answer",{method:"POST",body:JSON.stringify({gameId,choice:i})});$("score").textContent=x.score;beep(x.correct?720:220);if(x.done){$("gameArea").innerHTML="<h2>"+tr("finish")+"</h2><p>"+tr("points")+": <strong>"+x.score+"</strong></p><button class='btn primary' onclick='startGame()'>"+tr("start")+"</button>";gameId=null;loadRanking()}else showQuestion(x.question)}catch(e){$("gameArea").innerHTML="<p class='muted'>"+e.message+"</p>"}
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
+async function loadRanking(){try{const x=await api("/api/ranking");$("ranking").innerHTML="<table><thead><tr><th>#</th><th>Jugador</th><th>Puntos</th><th>Partidas</th></tr></thead><tbody>"+x.ranking.map((r,i)=>"<tr><td>"+(i+1)+"</td><td>"+escapeHtml(r.username)+"</td><td>"+r.score+"</td><td>"+r.games+"</td></tr>").join("")+"</tbody></table>"}catch{}}
+async function logout(){await api("/api/logout",{method:"POST"});location.reload()}
+function accountUI(){if(!user)return;$("accountArea").innerHTML="<span class='muted' style='margin-right:8px'>"+escapeHtml(user.username)+"</span><button class='btn' onclick='logout()'>Salir</button>"}
+async function devConsole(){
+  if(!user || user.role!=="admin"){alert("La consola requiere una cuenta administradora.");return}
+  const code=prompt("Código de desarrollador:");
+  if(code===null)return;
+  try{await api("/api/dev/open",{method:"POST",body:JSON.stringify({code})});devOpen=true;$("devPanel").classList.remove("hidden");await loadDev();$("devPanel").scrollIntoView({behavior:"smooth"})}catch(e){alert(e.message)}
+}
+async function loadDev(){const [u,s,a]=await Promise.all([api("/api/dev/users"),api("/api/dev/stats"),api("/api/dev/audit")]);$("devStats").innerHTML="<span>Usuarios: <strong>"+s.users+"</strong></span><span>Partidas activas: <strong>"+s.activeGames+"</strong></span><span>Sesiones: <strong>"+s.activeSessions+"</strong></span>";$("devUsers").innerHTML="<h3>Cuentas</h3><table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Puntos</th><th>Partidas</th><th>Acciones</th></tr></thead><tbody>"+u.users.map(r=>"<tr><td>"+escapeHtml(r.username)+"</td><td>"+r.role+"</td><td>"+r.status+"</td><td>"+r.bestScore+"</td><td>"+r.games+"</td><td><button class='btn' onclick='devScore("+r.id+",100)'>+100</button><button class='btn' onclick='devScore("+r.id+",-100)'>-100</button><button class='btn' onclick='devSet("+r.id+")'>Fijar</button><button class='btn' onclick='devAction("+r.id+",\""+(r.status==="active"?"block":"unblock")+"\")'>"+(r.status==="active"?"Bloquear":"Desbloquear")+"</button><button class='btn' onclick='devAction("+r.id+",\""+(r.role==="admin"?"demote":"promote")+"")'>"+(r.role==="admin"?"Quitar admin":"Hacer admin")+"</button><button class='btn danger' onclick='devAction("+r.id+",\"reset\")'>Reset</button></td></tr>").join("")+"</tbody></table>";$("devAudit").innerHTML="<h3>Registro</h3><table><thead><tr><th>Fecha</th><th>Admin</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>"+a.logs.map(l=>"<tr><td>"+new Date(l.createdAt).toLocaleString()+"</td><td>"+escapeHtml(l.actor||"—")+"</td><td>"+escapeHtml(l.action)+"</td><td>"+escapeHtml(l.details||"")+"</td></tr>").join("")+"</tbody></table>";accountUI()}
+async function devScore(id,delta){if(!confirm((delta>0?"+":"")+delta+" puntos?"))return;try{await api("/api/dev/users/"+id+"/score",{method:"POST",body:JSON.stringify({delta})});await loadDev();loadRanking()}catch(e){alert(e.message)}}
+async function devSet(id){const score=prompt("Nueva puntuación:");if(score===null)return;try{await api("/api/dev/users/"+id+"/set-score",{method:"POST",body:JSON.stringify({score:Number(score)})});await loadDev();loadRanking()}catch(e){alert(e.message)}}
+async function devAction(id,action){if(!confirm("¿Confirmar "+action+"?"))return;try{await api("/api/dev/users/"+id+"/"+action,{method:"POST",body:"{}"});await loadDev();loadRanking()}catch(e){alert(e.message)}}
+async function closeDev(){await api("/api/dev/close",{method:"POST",body:"{}"});$("devPanel").classList.add("hidden");devOpen=false}
+let seq="",seqTimer=0;
+window.addEventListener("keydown",e=>{if(e.key.length!==1)return;seq=(seq+e.key.toLowerCase()).slice(-3);clearTimeout(seqTimer);seqTimer=setTimeout(()=>seq="",1200);if(seq==="ftb")devConsole()});
+document.addEventListener("DOMContentLoaded",()=>{applyPrefs();accountUI();renderTurnstile();});
+</script>
+</body>
+</html>
