@@ -2,7 +2,7 @@ import { QUESTIONS, QUESTION_SETS, QUESTION_COUNTS } from "./questions.js";
 
 const DIFFICULTY_META = {
   facil: {label:"Fácil", points:100, coins:8},
-  dificil: {label:"Difícil", points:175, coins:14},
+  dificil: {label:"Normal", points:175, coins:14},
   imposible: {label:"Imposible", points:300, coins:25},
   blassvec: {label:"Blassvec Modo", points:0, coins:0}
 };
