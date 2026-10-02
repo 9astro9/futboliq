@@ -670,10 +670,12 @@ async function api(req,env) {
     const inserted=await env.DB.prepare("INSERT OR IGNORE INTO daily_gifts(user_id,claim_date,claimed_at) VALUES(?,?,?)").bind(u.id,claimDate,Date.now()).run();
     if(!inserted.meta?.changes) return json({error:"Ya reclamaste el regalo de hoy.",claimed:true,coins:u.coins||0,claimDate},409);
     try {
-      await env.DB.prepare("UPDATE users SET coins=coins+150,updated_at=? WHERE id=?").bind(Date.now(),u.id).run();
+      const boost=weekendMultiplier();
+      const amount=150*boost;
+      await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(amount,Date.now(),u.id).run();
       const fresh=await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first();
-      await log(env,u.id,"daily_gift",u.id,{amount:150,claimDate});
-      return json({ok:true,claimed:true,amount:150,coins:fresh?.coins??((u.coins||0)+150),claimDate});
+      await log(env,u.id,"daily_gift",u.id,{amount,baseAmount:150,claimDate,weekendMultiplier:boost});
+      return json({ok:true,claimed:true,amount,coins:fresh?.coins??((u.coins||0)+amount),claimDate,weekendMultiplier:boost});
     } catch(e) {
       await env.DB.prepare("DELETE FROM daily_gifts WHERE user_id=? AND claim_date=?").bind(u.id,claimDate).run().catch(()=>{});
       return json({error:"No se pudo acreditar el regalo."},500);
