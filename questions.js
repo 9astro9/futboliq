@@ -182,7 +182,52 @@ const NORMAL_FACTS = [
   {type:"basic",region:"Europa",question:"¿Qué club alemán tiene seis Copas de Europa/Champions League?",altQuestion:"¿Qué equipo alemán ganó seis veces la Champions?",thirdQuestion:"¿Qué club de Alemania suma seis títulos europeos?",answer:"Bayern Múnich",cat:"Champions"},
   {type:"basic",region:"Europa",question:"¿Qué club español ganó cinco Copas de Europa/Champions League?",altQuestion:"¿Qué equipo español suma cinco títulos de Champions?",thirdQuestion:"¿Qué club español ganó cinco veces la máxima copa europea?",answer:"Barcelona",cat:"Champions"},
   {type:"basic",region:"Europa",question:"¿Qué club neerlandés ganó cuatro Copas de Europa/Champions League?",altQuestion:"¿Qué equipo de Países Bajos suma cuatro Champions?",thirdQuestion:"¿Qué club neerlandés ganó cuatro veces la máxima copa europea?",answer:"Ajax",cat:"Champions"},
-  {type:"basic",region:"Europa",question:"¿Qué jugador ganó el Balón de Oro de 2000?",altQuestion:"¿Quién recibió el Balón de Oro en 2000?",thirdQuestion:"¿Qué estrella portuguesa ganó el premio en el año 2000?",answer:"Luís Figo",cat:"Balón de Oro"}
+  {type:"basic",region:"Europa",question:"¿Qué jugador ganó el Balón de Oro de 2000?",altQuestion:"¿Quién recibió el Balón de Oro en 2000?",thirdQuestion:"¿Qué estrella portuguesa ganó el premio en el año 2000?",answer:"Luís Figo",cat:"Balón de Oro"},
+  {type:"basic",region:"Sudamérica",question:"¿Quién ganó el Balón de Oro del Mundial 2022?",altQuestion:"¿Qué jugador fue elegido mejor jugador del Mundial de 2022?",thirdQuestion:"¿Qué argentino recibió el Balón de Oro de Catar 2022?",answer:"Lionel Messi",cat:"Balón de Oro del Mundial"},
+  {type:"basic",region:"Sudamérica",question:"¿Quién ganó el Balón de Oro del Mundial 2014?",altQuestion:"¿Qué jugador fue elegido mejor futbolista de Brasil 2014?",thirdQuestion:"¿Qué argentino recibió el Balón de Oro del Mundial 2014?",answer:"Lionel Messi",cat:"Balón de Oro del Mundial"},
+  {type:"basic",region:"Sudamérica",question:"¿Quién ganó el Balón de Oro del Mundial 2010?",altQuestion:"¿Qué jugador fue elegido mejor jugador de Sudáfrica 2010?",thirdQuestion:"¿Qué uruguayo recibió el premio al mejor jugador de 2010?",answer:"Diego Forlán",cat:"Balón de Oro del Mundial"},
+  {type:"basic",region:"Sudamérica",question:"¿Quién ganó la Bota de Oro del Mundial 2002?",altQuestion:"¿Qué jugador fue máximo goleador de Corea-Japón 2002?",thirdQuestion:"¿Qué brasileño terminó como goleador del Mundial 2002?",answer:"Ronaldo Nazário",cat:"Bota de Oro"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó el Mundial de 1970?",altQuestion:"¿Quién fue campeón de la Copa del Mundo de México 1970?",thirdQuestion:"¿Qué país ganó el Mundial de 1970?",answer:"Brasil",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección fue cuarta en el Mundial 2010?",altQuestion:"¿Qué selección sudamericana terminó cuarta en Sudáfrica 2010?",thirdQuestion:"¿Qué país perdió el partido por el tercer puesto de 2010?",answer:"Uruguay",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección perdió ante Bélgica en cuartos del Mundial 2018?",altQuestion:"¿Qué país sudamericano quedó eliminado por Bélgica en Rusia 2018?",thirdQuestion:"¿Quién cayó 2-1 ante Bélgica en los cuartos de 2018?",answer:"Brasil",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó la Copa América 2024?",altQuestion:"¿Quién fue campeón de la Copa América 2024?",thirdQuestion:"¿Qué país ganó la edición de 2024?",answer:"Argentina",cat:"Copa América"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó la Copa América 2019?",altQuestion:"¿Quién fue campeón de la Copa América de 2019?",thirdQuestion:"¿Qué país levantó el título continental en 2019?",answer:"Brasil",cat:"Copa América"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó la Copa América 2007?",altQuestion:"¿Quién fue campeón del torneo sudamericano de 2007?",thirdQuestion:"¿Qué país ganó la Copa América 2007?",answer:"Brasil",cat:"Copa América"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó la Copa América 1993?",altQuestion:"¿Quién fue campeón de la Copa América de 1993?",thirdQuestion:"¿Qué país ganó el torneo sudamericano de 1993?",answer:"Argentina",cat:"Copa América"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué club ganó siete veces la Copa Libertadores?",altQuestion:"¿Qué club tiene el récord de títulos de Libertadores?",thirdQuestion:"¿Quién lidera el historial de Copas Libertadores?",answer:"Independiente",cat:"Copa Libertadores"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué club ganó seis veces la Copa Libertadores?",altQuestion:"¿Qué equipo argentino tiene seis Libertadores?",thirdQuestion:"¿Qué club suma seis títulos de Libertadores?",answer:"Boca Juniors",cat:"Copa Libertadores"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué club uruguayo ganó cinco Copas Libertadores?",altQuestion:"¿Qué equipo de Uruguay tiene cinco Libertadores?",thirdQuestion:"¿Qué club uruguayo levantó cinco veces la Libertadores?",answer:"Peñarol",cat:"Copa Libertadores"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué club argentino ganó cuatro Copas Libertadores?",altQuestion:"¿Qué equipo argentino suma cuatro Libertadores?",thirdQuestion:"¿Qué club tiene cuatro títulos de Libertadores?",answer:"River Plate",cat:"Copa Libertadores"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué club uruguayo ganó tres Copas Libertadores?",altQuestion:"¿Qué equipo de Uruguay suma tres Libertadores?",thirdQuestion:"¿Qué club uruguayo ganó tres veces la máxima copa sudamericana?",answer:"Nacional",cat:"Copa Libertadores"},
+  {type:"basic",region:"Sudamérica",question:"¿Quién es el máximo goleador histórico de la Copa Libertadores?",altQuestion:"¿Qué jugador lidera la tabla histórica de goleadores de la Libertadores?",thirdQuestion:"¿Quién marcó más goles en la historia de la Copa Libertadores?",answer:"Alberto Spencer",cat:"Copa Libertadores"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué jugador brasileño ganó el Balón de Oro en 2007?",altQuestion:"¿Quién recibió el Balón de Oro de 2007?",thirdQuestion:"¿Qué estrella brasileña ganó el premio en 2007?",answer:"Kaká",cat:"Balón de Oro"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué jugador argentino fue Bota de Oro del Mundial 1994?",altQuestion:"¿Quién fue uno de los grandes goleadores argentinos de Estados Unidos 1994?",thirdQuestion:"¿Qué argentino marcó cuatro goles en el Mundial 1994?",answer:"Gabriel Batistuta",cat:"Mundiales"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué club brasileño ganó la Libertadores 2020?",altQuestion:"¿Quién fue campeón de la Copa Libertadores 2020?",thirdQuestion:"¿Qué equipo brasileño ganó la edición 2020?",answer:"Palmeiras",cat:"Copa Libertadores"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué club brasileño ganó la Libertadores 2022?",altQuestion:"¿Quién fue campeón de la Copa Libertadores 2022?",thirdQuestion:"¿Qué equipo ganó la edición 2022?",answer:"Flamengo",cat:"Copa Libertadores"},
+  {type:"basic",region:"Sudamérica",question:"¿Qué selección ganó el Mundial de 1962?",altQuestion:"¿Quién fue campeón de Chile 1962?",thirdQuestion:"¿Qué país ganó la Copa del Mundo de 1962?",answer:"Brasil",cat:"Mundiales"},
+
+  {type:"basic",region:"Europa",question:"¿Quién ganó el Balón de Oro del Mundial 2006?",altQuestion:"¿Qué jugador fue elegido mejor futbolista de Alemania 2006?",thirdQuestion:"¿Qué francés recibió el Balón de Oro del Mundial 2006?",answer:"Zinedine Zidane",cat:"Balón de Oro del Mundial"},
+  {type:"basic",region:"Europa",question:"¿Quién ganó el Balón de Oro del Mundial 2002?",altQuestion:"¿Qué jugador fue elegido mejor futbolista de Corea-Japón 2002?",thirdQuestion:"¿Qué arquero alemán recibió el premio en 2002?",answer:"Oliver Kahn",cat:"Balón de Oro del Mundial"},
+  {type:"basic",region:"Europa",question:"¿Quién ganó la Bota de Oro del Mundial 2006?",altQuestion:"¿Qué jugador fue máximo goleador de Alemania 2006?",thirdQuestion:"¿Qué delantero alemán terminó como goleador del Mundial 2006?",answer:"Miroslav Klose",cat:"Bota de Oro"},
+  {type:"basic",region:"Europa",question:"¿Quién ganó la Bota de Oro del Mundial 1982?",altQuestion:"¿Qué jugador fue máximo goleador de España 1982?",thirdQuestion:"¿Qué italiano terminó como goleador del Mundial 1982?",answer:"Paolo Rossi",cat:"Bota de Oro"},
+  {type:"basic",region:"Europa",question:"¿Quién ganó la Bota de Oro del Mundial 1986?",altQuestion:"¿Qué jugador fue máximo goleador de México 1986?",thirdQuestion:"¿Qué inglés terminó como goleador del Mundial 1986?",answer:"Gary Lineker",cat:"Bota de Oro"},
+  {type:"basic",region:"Europa",question:"¿Quién ganó la Bota de Oro del Mundial 1990?",altQuestion:"¿Qué jugador fue máximo goleador de Italia 1990?",thirdQuestion:"¿Qué italiano terminó como goleador del Mundial 1990?",answer:"Salvatore Schillaci",cat:"Bota de Oro"},
+  {type:"basic",region:"Europa",question:"¿Quién ganó la Bota de Oro del Mundial 2010?",altQuestion:"¿Qué jugador fue máximo goleador de Sudáfrica 2010?",thirdQuestion:"¿Qué alemán terminó como goleador del Mundial 2010?",answer:"Thomas Müller",cat:"Bota de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó la Eurocopa 1988?",altQuestion:"¿Quién fue campeón de la Euro 1988?",thirdQuestion:"¿Qué país ganó el torneo europeo de 1988?",answer:"Países Bajos",cat:"Eurocopa"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó la Eurocopa 1992?",altQuestion:"¿Quién fue campeón de la Euro 1992?",thirdQuestion:"¿Qué país ganó la Eurocopa de 1992?",answer:"Dinamarca",cat:"Eurocopa"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó la Eurocopa 2000?",altQuestion:"¿Quién fue campeón de la Euro 2000?",thirdQuestion:"¿Qué país ganó el torneo europeo de 2000?",answer:"Francia",cat:"Eurocopa"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó la Eurocopa 2004?",altQuestion:"¿Quién fue campeón de la Euro 2004?",thirdQuestion:"¿Qué país sorprendió y ganó el torneo europeo de 2004?",answer:"Grecia",cat:"Eurocopa"},
+  {type:"basic",region:"Europa",question:"¿Qué selección ganó la Eurocopa 2020?",altQuestion:"¿Quién fue campeón de la Euro 2020?",thirdQuestion:"¿Qué país ganó el torneo que terminó en 2021?",answer:"Italia",cat:"Eurocopa"},
+  {type:"basic",region:"Europa",question:"¿Qué club ganó la Champions League 1999?",altQuestion:"¿Quién fue campeón de Europa en 1999?",thirdQuestion:"¿Qué equipo ganó la final de Barcelona 1999?",answer:"Manchester United",cat:"Champions"},
+  {type:"basic",region:"Europa",question:"¿Qué club ganó la Champions League 2005?",altQuestion:"¿Quién fue campeón de Europa en 2005?",thirdQuestion:"¿Qué equipo protagonizó la remontada de Estambul en 2005?",answer:"Liverpool",cat:"Champions"},
+  {type:"basic",region:"Europa",question:"¿Qué club ganó la Champions League 2012?",altQuestion:"¿Quién fue campeón de Europa en 2012?",thirdQuestion:"¿Qué equipo ganó la final de Múnich 2012?",answer:"Chelsea",cat:"Champions"},
+  {type:"basic",region:"Europa",question:"¿Qué club ganó la Champions League 2020?",altQuestion:"¿Quién fue campeón de Europa en 2020?",thirdQuestion:"¿Qué equipo ganó la final de Lisboa 2020?",answer:"Bayern Múnich",cat:"Champions"},
+  {type:"basic",region:"Europa",question:"¿Qué jugador portugués ganó el Balón de Oro de 2013?",altQuestion:"¿Quién recibió el Balón de Oro en 2013?",thirdQuestion:"¿Qué portugués ganó el premio en 2013?",answer:"Cristiano Ronaldo",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué alemán ganó el Balón de Oro de 1990?",altQuestion:"¿Quién recibió el Balón de Oro en 1990?",thirdQuestion:"¿Qué capitán alemán fue Balón de Oro en 1990?",answer:"Lothar Matthäus",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué alemán ganó el Balón de Oro de 1996?",altQuestion:"¿Quién recibió el Balón de Oro en 1996?",thirdQuestion:"¿Qué defensor alemán ganó el premio en 1996?",answer:"Matthias Sammer",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Qué ucraniano ganó el Balón de Oro de 2004?",altQuestion:"¿Quién recibió el Balón de Oro en 2004?",thirdQuestion:"¿Qué delantero ucraniano ganó el premio en 2004?",answer:"Andriy Shevchenko",cat:"Balón de Oro"},
+  {type:"basic",region:"Europa",question:"¿Quién fue Bota de Oro del Mundial 2018?",altQuestion:"¿Qué jugador terminó como máximo goleador de Rusia 2018?",thirdQuestion:"¿Qué delantero de Inglaterra ganó la Bota de Oro en 2018?",answer:"Harry Kane",cat:"Bota de Oro"},
+  {type:"basic",region:"Europa",question:"¿Quién fue Bota de Oro del Mundial 2022?",altQuestion:"¿Qué jugador terminó como máximo goleador de Catar 2022?",thirdQuestion:"¿Qué francés ganó la Bota de Oro en 2022?",answer:"Kylian Mbappé",cat:"Bota de Oro"}
 ];
 const IMPOSSIBLE_FACTS = [
   {player:"Bert Patenaude",team:"Estados Unidos",opponent:"Paraguay",year:"1930",cat:"Hat-tricks"},
@@ -323,14 +368,14 @@ const BLASSVEC = [
   ["Blassvec","¿Cuántas porterías hay en una cancha de fútbol?",["Dos","Una","Cuatro"],0,"blassvec"]
 ];
 
-if(EASY.length!==168 || NORMAL.length!==168 || IMPOSSIBLE.length!==168 || BLASSVEC.length!==30)
+if(EASY.length!==168 || NORMAL.length!==300 || IMPOSSIBLE.length!==168 || BLASSVEC.length!==30)
   throw new Error(`Banco inválido: fácil=${EASY.length}, difícil=${HARD.length}, imposible=${IMPOSSIBLE.length}, blassvec=${BLASSVEC.length}`);
 
 export const QUESTIONS=[...EASY,...HARD,...IMPOSSIBLE,...BLASSVEC];
 export const QUESTION_SETS={
   facil:EASY.map((_,i)=>i),
-  dificil:NORMAL.map((_,i)=>168+i),
-  imposible:IMPOSSIBLE.map((_,i)=>336+i),
-  blassvec:BLASSVEC.map((_,i)=>504+i)
+  dificil:NORMAL.map((_,i)=>EASY.length+i),
+  imposible:IMPOSSIBLE.map((_,i)=>EASY.length+NORMAL.length+i),
+  blassvec:BLASSVEC.map((_,i)=>EASY.length+NORMAL.length+IMPOSSIBLE.length+i)
 };
 export const QUESTION_COUNTS={facil:EASY.length,dificil:NORMAL.length,imposible:IMPOSSIBLE.length,blassvec:BLASSVEC.length};
