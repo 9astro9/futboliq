@@ -1,19 +1,24 @@
-const QUESTIONS = [
-  ["Mundiales","¿Quién tiene más goles en la historia de los Mundiales?",["Lionel Messi","Cristiano Ronaldo","Miroslav Klose"],2],
-  ["Mundiales","¿Qué selección ganó el Mundial 2022?",["Argentina","Francia","Brasil"],0],
-  ["Reglas","¿Cuántos jugadores tiene un equipo al comenzar un partido?",["10","11","12"],1],
-  ["Mundiales","¿Qué país ganó el Mundial 2014?",["Alemania","Argentina","España"],0],
-  ["Leyendas","¿Quién era conocido como 'O Rei'?",["Pelé","Maradona","Zidane"],0],
-  ["Mundiales","¿Qué selección tiene más títulos mundiales?",["Brasil","Alemania","Italia"],0],
-  ["Reglas","¿Cuánto dura un partido sin contar el tiempo añadido?",["80 minutos","90 minutos","100 minutos"],1],
-  ["Reglas","¿Qué tarjeta implica expulsión?",["Amarilla","Azul","Roja"],2],
-  ["Uruguay","¿Cuántos Mundiales ganó Uruguay?",["1","2","3"],1],
-  ["Leyendas","¿Quién fue capitán de Argentina en el Mundial 1986?",["Batistuta","Maradona","Zanetti"],1],
-  ["Champions","¿Qué club ganó más Champions League hasta 2025?",["Real Madrid","Milan","Liverpool"],0],
-  ["Mundiales","¿Quién marcó el gol de la final del Mundial 2010?",["Iniesta","Villa","Xavi"],0]
+import { QUESTIONS, QUESTION_SETS, QUESTION_COUNTS } from "./questions.js";
+
+const DIFFICULTY_META = {
+  facil: {label:"Fácil", points:100, coins:8},
+  dificil: {label:"Difícil", points:175, coins:14},
+  imposible: {label:"Imposible", points:300, coins:25}
+};
+
+const STYLES = [
+  {id:"clasico",name:"Clásico",price:0,icon:"⚽",desc:"El estilo original de FUTBOLIQ."},
+  {id:"neon",name:"Neón",price:300,icon:"⚡",desc:"Perfil brillante con estética futurista."},
+  {id:"fuego",name:"Fuego",price:600,icon:"🔥",desc:"Un perfil intenso para competir."},
+  {id:"hielo",name:"Hielo",price:600,icon:"❄️",desc:"Estilo frío y elegante."},
+  {id:"oro",name:"Oro",price:1000,icon:"👑",desc:"Perfil dorado para coleccionistas."},
+  {id:"carbono",name:"Carbono",price:1400,icon:"🖤",desc:"Estilo oscuro de alto nivel."},
+  {id:"retro",name:"Retro",price:900,icon:"📼",desc:"Inspirado en el fútbol clásico."},
+  {id:"cosmico",name:"Cósmico",price:1800,icon:"🌌",desc:"Un perfil con estilo espacial."},
+  {id:"mundial",name:"Mundial",price:2500,icon:"🏆",desc:"Para quienes viven el fútbol."}
 ];
 
-const PUBLIC_QUESTIONS = QUESTIONS.map((q,i)=>({id:i,category:q[0],q:q[1],options:q[2]}));
+const STYLE_BY_ID = new Map(STYLES.map(s=>[s.id,s]));
 const RATE = new Map();
 
 let schemaReadyPromise=null;
@@ -30,6 +35,8 @@ async function ensureDatabase(env) {
         status TEXT NOT NULL DEFAULT 'active',
         best_score INTEGER NOT NULL DEFAULT 0,
         games INTEGER NOT NULL DEFAULT 0,
+        coins INTEGER NOT NULL DEFAULT 300,
+        profile_style TEXT NOT NULL DEFAULT 'clasico',
         created_at INTEGER NOT NULL,
         updated_at INTEGER
       )`),
@@ -43,6 +50,8 @@ async function ensureDatabase(env) {
         user_id INTEGER NOT NULL,
         idx INTEGER NOT NULL,
         score INTEGER NOT NULL,
+        difficulty TEXT NOT NULL DEFAULT 'facil',
+        question_ids TEXT,
         started_at INTEGER NOT NULL
       )`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS dev_sessions(
@@ -58,11 +67,34 @@ async function ensureDatabase(env) {
         details TEXT,
         created_at INTEGER NOT NULL
       )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_styles(
+        user_id INTEGER NOT NULL,
+        style_id TEXT NOT NULL,
+        purchased_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id,style_id)
+      )`),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_games_user ON games(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_dev_expiry ON dev_sessions(expires_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_styles_user ON user_styles(user_id)"),
       env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_nocase ON users(username COLLATE NOCASE)")
+    ]);
+
+    const userInfo=await env.DB.prepare("PRAGMA table_info(users)").all();
+    const userCols=new Set((userInfo.results||[]).map(r=>r.name));
+    if(!userCols.has("coins")) await env.DB.prepare("ALTER TABLE users ADD COLUMN coins INTEGER NOT NULL DEFAULT 300").run();
+    if(!userCols.has("profile_style")) await env.DB.prepare("ALTER TABLE users ADD COLUMN profile_style TEXT NOT NULL DEFAULT 'clasico'").run();
+
+    const gameInfo=await env.DB.prepare("PRAGMA table_info(games)").all();
+    const gameCols=new Set((gameInfo.results||[]).map(r=>r.name));
+    if(!gameCols.has("difficulty")) await env.DB.prepare("ALTER TABLE games ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'facil'").run();
+    if(!gameCols.has("question_ids")) await env.DB.prepare("ALTER TABLE games ADD COLUMN question_ids TEXT").run();
+
+    await env.DB.batch([
+      env.DB.prepare("INSERT OR IGNORE INTO user_styles(user_id,style_id,purchased_at) SELECT id,'clasico',COALESCE(created_at,?) FROM users").bind(Date.now()),
+      env.DB.prepare("UPDATE users SET coins=300 WHERE coins IS NULL"),
+      env.DB.prepare("UPDATE users SET profile_style='clasico' WHERE profile_style IS NULL OR profile_style=''")
     ]);
   })().catch(e=>{
     schemaReadyPromise=null;
@@ -71,7 +103,6 @@ async function ensureDatabase(env) {
   });
   return schemaReadyPromise;
 }
-
 const json = (data,status=200,headers={}) =>
   new Response(JSON.stringify(data), {
     status,
@@ -126,7 +157,7 @@ async function currentUser(req,env) {
   const raw=getCookie(req,"f_session");
   if(!raw) return null;
   return env.DB.prepare(
-    "SELECT u.id,u.username,u.role,u.status,u.best_score AS bestScore,u.games FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? LIMIT 1"
+    "SELECT u.id,u.username,u.role,u.status,u.best_score AS bestScore,u.games,u.coins,u.profile_style AS profileStyle FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? LIMIT 1"
   ).bind(await digest(raw),Date.now()).first();
 }
 
@@ -156,7 +187,80 @@ async function api(req,env) {
   await ensureDatabase(env);
   const url=new URL(req.url);
   const path=url.pathname;
-  if(!sameOrigin(req)) return json({error:"Origen no permitido"},403);if(path==="/api/health" && req.method==="GET") {
+  if(!sameOrigin(req)) return json({error:"Origen no permitido"},403);
+
+  if(path==="/api/health" && req.method==="GET") {
+    try {
+      const rows=await env.DB.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('users','sessions','games','dev_sessions','audit_logs','user_styles') ORDER BY name"
+      ).all();
+      return json({ok:true,tables:(rows.results||[]).map(r=>r.name)});
+    } catch(e) {
+      console.error("[health]",e);
+      return json({ok:false,error:"D1 no disponible."},500);
+    }
+  }
+
+  if(path==="/api/me" && req.method==="GET")
+    return json({user:await currentUser(req,env)});
+
+  if(path==="/api/profile" && req.method==="GET") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    const owned=await env.DB.prepare("SELECT style_id AS styleId FROM user_styles WHERE user_id=?").bind(u.id).all();
+    const ownedIds=new Set((owned.results||[]).map(r=>r.styleId));
+    return json({
+      profile:u,
+      styles:STYLES.map(s=>({...s,owned:ownedIds.has(s.id)||s.id==="clasico",equipped:u.profileStyle===s.id}))
+    });
+  }
+
+  if(path==="/api/shop" && req.method==="GET") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    const owned=await env.DB.prepare("SELECT style_id AS styleId FROM user_styles WHERE user_id=?").bind(u.id).all();
+    const ownedIds=new Set((owned.results||[]).map(r=>r.styleId));
+    return json({
+      coins:u.coins,
+      equipped:u.profileStyle,
+      styles:STYLES.map(s=>({...s,owned:ownedIds.has(s.id)||s.id==="clasico",equipped:u.profileStyle===s.id}))
+    });
+  }
+
+  if(path==="/api/shop/buy" && req.method==="POST") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const styleId=String(x.styleId||"");
+    const style=STYLE_BY_ID.get(styleId);
+    if(!style) return json({error:"Estilo inexistente."},404);
+    const own=await env.DB.prepare("SELECT 1 FROM user_styles WHERE user_id=? AND style_id=? LIMIT 1").bind(u.id,styleId).first();
+    if(own || styleId==="clasico") return json({error:"Ya tienes este estilo."},409);
+    if(u.coins<style.price) return json({error:"No tienes suficientes monedas."},400);
+    const paid=await env.DB.prepare("UPDATE users SET coins=coins-?,updated_at=? WHERE id=? AND coins>=?").bind(style.price,Date.now(),u.id,style.price).run();
+    if(!paid.meta?.changes) return json({error:"No tienes suficientes monedas."},400);
+    try {
+      await env.DB.prepare("INSERT INTO user_styles(user_id,style_id,purchased_at) VALUES(?,?,?)").bind(u.id,styleId,Date.now()).run();
+    } catch(e) {
+      await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(style.price,Date.now(),u.id).run();
+      return json({error:"No se pudo guardar la compra."},500);
+    }
+    await log(env,u.id,"style_buy",u.id,{styleId,price:style.price});
+    return json({ok:true,coins:u.coins-style.price,styleId});
+  }
+
+  if(path==="/api/shop/equip" && req.method==="POST") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const styleId=String(x.styleId||"");
+    if(!STYLE_BY_ID.has(styleId)) return json({error:"Estilo inexistente."},404);
+    const own=await env.DB.prepare("SELECT 1 FROM user_styles WHERE user_id=? AND style_id=? LIMIT 1").bind(u.id,styleId).first();
+    if(!own && styleId!=="clasico") return json({error:"Primero debes comprar ese estilo."},403);
+    await env.DB.prepare("UPDATE users SET profile_style=?,updated_at=? WHERE id=?").bind(styleId,Date.now(),u.id).run();
+    await log(env,u.id,"style_equip",u.id,{styleId});
+    return json({ok:true,profileStyle:styleId});
+  }if(path==="/api/health" && req.method==="GET") {
     try {
       const rows=await env.DB.prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('users','sessions','games','dev_sessions','audit_logs') ORDER BY name"
@@ -189,8 +293,8 @@ async function api(req,env) {
     let created;
     try {
       await env.DB.prepare(
-        "INSERT INTO users(username,password_hash,salt,role,status,best_score,games,created_at) VALUES(?,?,?,?,?,?,?,?)"
-      ).bind(username,hash,salt,role,"active",0,0,now).run();
+        "INSERT INTO users(username,password_hash,salt,role,status,best_score,games,coins,profile_style,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)"
+      ).bind(username,hash,salt,role,"active",0,0,300,"clasico",now).run();
       created=await env.DB.prepare(
         "SELECT id FROM users WHERE username=? COLLATE NOCASE LIMIT 1"
       ).bind(username).first();
@@ -206,6 +310,7 @@ async function api(req,env) {
     }
 
     const userId=created.id;
+    await env.DB.prepare("INSERT OR IGNORE INTO user_styles(user_id,style_id,purchased_at) VALUES(?,?,?)").bind(userId,"clasico",now).run();
     const session=token();
     try {
       await env.DB.prepare("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)")
@@ -254,17 +359,29 @@ async function api(req,env) {
   }
 
   if(path==="/api/ranking" && req.method==="GET") {
-    const rows=await env.DB.prepare("SELECT username,best_score AS score,games FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, id ASC LIMIT 100").all();
+    const rows=await env.DB.prepare("SELECT username,best_score AS score,games,profile_style AS profileStyle FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, games DESC, id ASC LIMIT 100").all();
     return json({ranking:rows.results||[]});
   }
 
   if(path==="/api/game" && req.method==="POST") {
     const u=await requireUser(req,env);
     if(!u) return json({error:"Inicia sesión."},403);
+    let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const difficulty=String(x.difficulty||"facil");
+    if(!QUESTION_SETS[difficulty] || !DIFFICULTY_META[difficulty]) return json({error:"Dificultad inválida."},400);
+    const pool=QUESTION_SETS[difficulty];
+    const picked=[];
+    const used=new Set();
+    while(picked.length<10 && picked.length<pool.length){
+      const candidate=pool[Math.floor(Math.random()*pool.length)];
+      if(!used.has(candidate)){used.add(candidate);picked.push(candidate);}
+    }
     const gameId=token();
-    await env.DB.prepare("INSERT INTO games(id,user_id,idx,score,started_at) VALUES(?,?,?,?,?)")
-      .bind(gameId,u.id,0,0,Date.now()).run();
-    return json({gameId,question:PUBLIC_QUESTIONS[0],total:PUBLIC_QUESTIONS.length});
+    await env.DB.prepare(
+      "INSERT INTO games(id,user_id,idx,score,difficulty,question_ids,started_at) VALUES(?,?,?,?,?,?,?)"
+    ).bind(gameId,u.id,0,0,difficulty,JSON.stringify(picked),Date.now()).run();
+    const q=QUESTIONS[picked[0]];
+    return json({gameId,difficulty,total:picked.length,question:{id:picked[0],category:q[0],q:q[1],options:q[2]}});
   }
 
   if(path==="/api/answer" && req.method==="POST") {
@@ -273,27 +390,46 @@ async function api(req,env) {
     let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
     const game=await env.DB.prepare("SELECT * FROM games WHERE id=? AND user_id=? LIMIT 1").bind(String(x.gameId),u.id).first();
     if(!game) return json({error:"Partida inválida."},400);
-    if(game.idx<0 || game.idx>=QUESTIONS.length) return json({error:"Partida corrupta."},400);
+    const ids=JSON.parse(game.question_ids||"[]");
+    if(!Array.isArray(ids) || ids.length<1) return json({error:"Partida antigua o corrupta."},400);
+    if(!DIFFICULTY_META[game.difficulty]) return json({error:"Dificultad inválida."},400);
+    if(game.idx<0 || game.idx>=ids.length) return json({error:"Partida corrupta."},400);
 
-    const q=QUESTIONS[game.idx];
+    const q=QUESTIONS[ids[game.idx]];
+    if(!q) return json({error:"Pregunta inválida."},400);
     const choice=Number(x.choice);
     if(!Number.isInteger(choice) || choice<0 || choice>=q[2].length) return json({error:"Respuesta inválida."},400);
 
     const correct=choice===q[3];
-    const points=correct?100:0;
+    const meta=DIFFICULTY_META[game.difficulty];
+    const points=correct?meta.points:0;
+    const coinGain=correct?meta.coins:0;
     const score=game.score+points;
     const next=game.idx+1;
+    let totalCoins=null;
 
-    if(next>=QUESTIONS.length) {
+    if(correct) {
+      const bonus=next>=ids.length?50:0;
+      await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(coinGain+bonus,Date.now(),u.id).run();
+      totalCoins=(u.coins||0)+coinGain+bonus;
+    }
+
+    if(next>=ids.length) {
       await env.DB.batch([
         env.DB.prepare("UPDATE users SET games=games+1,best_score=MAX(best_score,?),updated_at=? WHERE id=?").bind(score,Date.now(),u.id),
         env.DB.prepare("DELETE FROM games WHERE id=?").bind(game.id)
       ]);
-      return json({correct,points,score,done:true});
+      const fresh=await env.DB.prepare("SELECT coins,profile_style AS profileStyle FROM users WHERE id=?").bind(u.id).first();
+      return json({correct,points,score,done:true,coins:fresh?.coins??totalCoins,difficulty:game.difficulty});
     }
 
     await env.DB.prepare("UPDATE games SET idx=?,score=? WHERE id=?").bind(next,score,game.id).run();
-    return json({correct,points,score,done:false,question:PUBLIC_QUESTIONS[next]});
+    const nextQ=QUESTIONS[ids[next]];
+    return json({
+      correct,points,score,done:false,coins:totalCoins??u.coins,
+      difficulty:game.difficulty,
+      question:{id:ids[next],category:nextQ[0],q:nextQ[1],options:nextQ[2]}
+    });
   }
 
   if(path==="/api/dev/open" && req.method==="POST") {
@@ -315,7 +451,7 @@ async function api(req,env) {
     if(!admin || !ds) return json({error:"Sesión de desarrollador no autorizada."},403);
 
     if(path==="/api/dev/users" && req.method==="GET") {
-      const rows=await env.DB.prepare("SELECT id,username,role,status,best_score AS bestScore,games,created_at AS createdAt FROM users ORDER BY id DESC").all();
+      const rows=await env.DB.prepare("SELECT id,username,role,status,best_score AS bestScore,games,coins,profile_style AS profileStyle,created_at AS createdAt FROM users ORDER BY id DESC").all();
       return json({users:rows.results||[]});
     }
 
