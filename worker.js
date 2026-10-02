@@ -261,7 +261,7 @@ async function ensureFeatureTables(env){
         opponent_score INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         expires_at INTEGER NOT NULL
-      `)
+      )`)
     ]);
   })().catch(e=>{featureSchemaPromise=null;console.error("[feature-db]",e);throw e});
   return featureSchemaPromise;
