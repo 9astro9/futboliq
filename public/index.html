@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FUTBOLIQ — Quiz de fútbol</title>
+<title>FUTBOLIQ — Quiz de fútbol</title><link rel="icon" href="data:,">
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <style>
 :root{--bg:#080c15;--card:#111827;--card2:#0d1422;--text:#f3f4f6;--muted:#9ca3af;--line:#263247;--accent:#35d39a;--danger:#f87171;--shadow:0 14px 35px rgba(0,0,0,.25)}
@@ -179,7 +179,68 @@ async function devConsole(){
   if(code===null)return;
   try{await api("/api/dev/open",{method:"POST",body:JSON.stringify({code})});devOpen=true;$("devPanel").classList.remove("hidden");await loadDev();$("devPanel").scrollIntoView({behavior:"smooth"})}catch(e){alert(e.message)}
 }
-async function loadDev(){const [u,s,a]=await Promise.all([api("/api/dev/users"),api("/api/dev/stats"),api("/api/dev/audit")]);$("devStats").innerHTML="<span>Usuarios: <strong>"+s.users+"</strong></span><span>Partidas activas: <strong>"+s.activeGames+"</strong></span><span>Sesiones: <strong>"+s.activeSessions+"</strong></span>";$("devUsers").innerHTML="<h3>Cuentas</h3><table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Puntos</th><th>Partidas</th><th>Acciones</th></tr></thead><tbody>"+u.users.map(r=>"<tr><td>"+escapeHtml(r.username)+"</td><td>"+r.role+"</td><td>"+r.status+"</td><td>"+r.bestScore+"</td><td>"+r.games+"</td><td><button class='btn' onclick='devScore("+r.id+",100)'>+100</button><button class='btn' onclick='devScore("+r.id+",-100)'>-100</button><button class='btn' onclick='devSet("+r.id+")'>Fijar</button><button class='btn' onclick='devAction("+r.id+",\""+(r.status==="active"?"block":"unblock")+"\")'>"+(r.status==="active"?"Bloquear":"Desbloquear")+"</button><button class='btn' onclick='devAction("+r.id+",\""+(r.role==="admin"?"demote":"promote")+"")'>"+(r.role==="admin"?"Quitar admin":"Hacer admin")+"</button><button class='btn danger' onclick='devAction("+r.id+",\"reset\")'>Reset</button></td></tr>").join("")+"</tbody></table>";$("devAudit").innerHTML="<h3>Registro</h3><table><thead><tr><th>Fecha</th><th>Admin</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>"+a.logs.map(l=>"<tr><td>"+new Date(l.createdAt).toLocaleString()+"</td><td>"+escapeHtml(l.actor||"—")+"</td><td>"+escapeHtml(l.action)+"</td><td>"+escapeHtml(l.details||"")+"</td></tr>").join("")+"</tbody></table>";accountUI()}
+async function loadDev(){
+  const [u,s,a]=await Promise.all([
+    api("/api/dev/users"),
+    api("/api/dev/stats"),
+    api("/api/dev/audit")
+  ]);
+
+  $("devStats").innerHTML=
+    "<span>Usuarios: <strong>"+s.users+"</strong></span>"+
+    "<span>Partidas activas: <strong>"+s.activeGames+"</strong></span>"+
+    "<span>Sesiones: <strong>"+s.activeSessions+"</strong></span>";
+
+  const rows=(u.users||[]).map(r=>{
+    const statusAction=r.status==="active"?"block":"unblock";
+    const statusLabel=r.status==="active"?"Bloquear":"Desbloquear";
+    const roleAction=r.role==="admin"?"demote":"promote";
+    const roleLabel=r.role==="admin"?"Quitar admin":"Hacer admin";
+    return "<tr>"+
+      "<td>"+escapeHtml(r.username)+"</td>"+
+      "<td>"+escapeHtml(r.role)+"</td>"+
+      "<td>"+escapeHtml(r.status)+"</td>"+
+      "<td>"+r.bestScore+"</td>"+
+      "<td>"+r.games+"</td>"+
+      "<td>"+
+        "<button class='btn dev-score' data-id='"+r.id+"' data-delta='100'>+100</button>"+
+        "<button class='btn dev-score' data-id='"+r.id+"' data-delta='-100'>-100</button>"+
+        "<button class='btn dev-set' data-id='"+r.id+"'>Fijar</button>"+
+        "<button class='btn dev-action' data-id='"+r.id+"' data-action='"+statusAction+"'>"+statusLabel+"</button>"+
+        "<button class='btn dev-action' data-id='"+r.id+"' data-action='"+roleAction+"'>"+roleLabel+"</button>"+
+        "<button class='btn danger dev-action' data-id='"+r.id+"' data-action='reset'>Reset</button>"+
+      "</td>"+
+    "</tr>";
+  }).join("");
+
+  $("devUsers").innerHTML=
+    "<h3>Cuentas</h3>"+
+    "<table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Puntos</th><th>Partidas</th><th>Acciones</th></tr></thead>"+
+    "<tbody>"+rows+"</tbody></table>";
+
+  document.querySelectorAll(".dev-score").forEach(btn=>{
+    btn.addEventListener("click",()=>devScore(Number(btn.dataset.id),Number(btn.dataset.delta)));
+  });
+  document.querySelectorAll(".dev-set").forEach(btn=>{
+    btn.addEventListener("click",()=>devSet(Number(btn.dataset.id)));
+  });
+  document.querySelectorAll(".dev-action").forEach(btn=>{
+    btn.addEventListener("click",()=>devAction(Number(btn.dataset.id),btn.dataset.action));
+  });
+
+  $("devAudit").innerHTML=
+    "<h3>Registro</h3>"+
+    "<table><thead><tr><th>Fecha</th><th>Admin</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>"+
+    (a.logs||[]).map(l=>
+      "<tr><td>"+new Date(l.createdAt).toLocaleString()+"</td>"+
+      "<td>"+escapeHtml(l.actor||"—")+"</td>"+
+      "<td>"+escapeHtml(l.action||"")+"</td>"+
+      "<td>"+escapeHtml(l.details||"")+"</td></tr>"
+    ).join("")+
+    "</tbody></table>";
+
+  accountUI();
+}
 async function devScore(id,delta){if(!confirm((delta>0?"+":"")+delta+" puntos?"))return;try{await api("/api/dev/users/"+id+"/score",{method:"POST",body:JSON.stringify({delta})});await loadDev();loadRanking()}catch(e){alert(e.message)}}
 async function devSet(id){const score=prompt("Nueva puntuación:");if(score===null)return;try{await api("/api/dev/users/"+id+"/set-score",{method:"POST",body:JSON.stringify({score:Number(score)})});await loadDev();loadRanking()}catch(e){alert(e.message)}}
 async function devAction(id,action){if(!confirm("¿Confirmar "+action+"?"))return;try{await api("/api/dev/users/"+id+"/"+action,{method:"POST",body:"{}"});await loadDev();loadRanking()}catch(e){alert(e.message)}}
