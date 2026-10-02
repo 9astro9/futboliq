@@ -19,6 +19,23 @@ const STYLES = [
 ];
 
 const STYLE_BY_ID = new Map(STYLES.map(s=>[s.id,s]));
+const NAME_COLORS = [
+  {id:"blanco",name:"Blanco",price:0,color:"#f5f7fb",desc:"El color original de FUTBOLIQ."},
+  {id:"azul",name:"Azul",price:700,color:"#60a5fa",desc:"Azul eléctrico para tu nombre."},
+  {id:"rojo",name:"Rojo",price:900,color:"#fb7185",desc:"Un nombre que resalta."},
+  {id:"verde",name:"Verde",price:1200,color:"#35d399",desc:"Tono verde FUTBOLIQ."},
+  {id:"violeta",name:"Violeta",price:1600,color:"#c084fc",desc:"Violeta brillante."},
+  {id:"celeste",name:"Celeste",price:1900,color:"#67e8f9",desc:"Celeste de selección."},
+  {id:"rosa",name:"Rosa",price:2400,color:"#f472b6",desc:"Rosa intenso."},
+  {id:"oro",name:"Dorado",price:3500,color:"#f6c453",desc:"Nombre dorado."},
+  {id:"arcoiris",name:"Arcoíris",price:9000,color:null,gradient:"linear-gradient(90deg,#ff595e,#ffca3a,#8ac926,#1982c4,#6a4c93)",desc:"Gradiente multicolor."}
+];
+const NAME_COLOR_BY_ID = new Map(NAME_COLORS.map(c=>[c.id,c]));
+const OWNER_NAME_COLOR = {
+  id:"owner",name:"OWNER",color:null,
+  gradient:"linear-gradient(90deg,#35d399,#f6c453,#7dd3fc,#c084fc,#35d399)",
+  desc:"Exclusivo del Owner. No está a la venta."
+};
 const RATE = new Map();
 
 function isOwnerName(username,env){
@@ -80,12 +97,28 @@ async function ensureDatabase(env) {
         style_id TEXT NOT NULL,
         purchased_at INTEGER NOT NULL,
         PRIMARY KEY(user_id,style_id)
+      `),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_name_colors(
+        user_id INTEGER NOT NULL,
+        color_id TEXT NOT NULL,
+        purchased_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id,color_id)
+      )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS notifications(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        message TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        read_at INTEGER
       )`),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_games_user ON games(user_id)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_dev_expiry ON dev_sessions(expires_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)"),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_styles_user ON user_styles(user_id)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_name_colors_user ON user_name_colors(user_id)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id,read_at)"),
       env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_nocase ON users(username COLLATE NOCASE)")
     ]);
 
@@ -94,6 +127,7 @@ async function ensureDatabase(env) {
     if(!userCols.has("coins")) await env.DB.prepare("ALTER TABLE users ADD COLUMN coins INTEGER NOT NULL DEFAULT 300").run();
     if(!userCols.has("profile_style")) await env.DB.prepare("ALTER TABLE users ADD COLUMN profile_style TEXT NOT NULL DEFAULT 'clasico'").run();
     if(!userCols.has("beta_tester")) await env.DB.prepare("ALTER TABLE users ADD COLUMN beta_tester INTEGER NOT NULL DEFAULT 0").run();
+    if(!userCols.has("name_color")) await env.DB.prepare("ALTER TABLE users ADD COLUMN name_color TEXT NOT NULL DEFAULT 'blanco'").run();
 
     const gameInfo=await env.DB.prepare("PRAGMA table_info(games)").all();
     const gameCols=new Set((gameInfo.results||[]).map(r=>r.name));
@@ -103,7 +137,9 @@ async function ensureDatabase(env) {
     await env.DB.batch([
       env.DB.prepare("INSERT OR IGNORE INTO user_styles(user_id,style_id,purchased_at) SELECT id,'clasico',COALESCE(created_at,?) FROM users").bind(Date.now()),
       env.DB.prepare("UPDATE users SET coins=300 WHERE coins IS NULL"),
-      env.DB.prepare("UPDATE users SET profile_style='clasico' WHERE profile_style IS NULL OR profile_style=''")
+      env.DB.prepare("UPDATE users SET profile_style='clasico' WHERE profile_style IS NULL OR profile_style=''"),
+      env.DB.prepare("UPDATE users SET name_color='blanco' WHERE name_color IS NULL OR name_color=''"),
+      env.DB.prepare("INSERT OR IGNORE INTO user_name_colors(user_id,color_id,purchased_at) SELECT id,'blanco',COALESCE(created_at,?) FROM users").bind(Date.now())
     ]);
   })().catch(e=>{
     schemaReadyPromise=null;
@@ -166,12 +202,23 @@ async function currentUser(req,env) {
   const raw=getCookie(req,"f_session");
   if(!raw) return null;
   const u=await env.DB.prepare(
-    "SELECT u.id,u.username,u.role,u.status,u.best_score AS bestScore,u.games,u.coins,u.profile_style AS profileStyle,u.beta_tester AS betaTester FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? LIMIT 1"
+    "SELECT u.id,u.username,u.role,u.status,u.best_score AS bestScore,u.games,u.coins,u.profile_style AS profileStyle,u.beta_tester AS betaTester,u.name_color AS nameColor FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? LIMIT 1"
   ).bind(await digest(raw),Date.now()).first();
   if(!u) return null;
   u.betaTester=!!u.betaTester;
   u.owner=isOwnerUser(u,env);
+  u.nameColor=u.nameColor||"blanco";
   return u;
+}
+
+async function consumeNotifications(env,userId){
+  const rows=await env.DB.prepare(
+    "SELECT id,type,message,created_at AS createdAt FROM notifications WHERE user_id=? AND read_at IS NULL ORDER BY created_at ASC LIMIT 20"
+  ).bind(userId).all();
+  const notifications=rows.results||[];
+  if(notifications.length)
+    await env.DB.prepare("UPDATE notifications SET read_at=? WHERE user_id=? AND read_at IS NULL").bind(Date.now(),userId).run();
+  return notifications;
 }
 
 async function requireUser(req,env,admin=false) {
@@ -214,17 +261,23 @@ async function api(req,env) {
     }
   }
 
-  if(path==="/api/me" && req.method==="GET")
-    return json({user:await currentUser(req,env)});
+  if(path==="/api/me" && req.method==="GET") {
+    const me=await currentUser(req,env);
+    if(!me) return json({user:null,notifications:[]});
+    return json({user:me,notifications:await consumeNotifications(env,me.id)});
+  }
 
   if(path==="/api/profile" && req.method==="GET") {
     const u=await requireUser(req,env);
     if(!u) return json({error:"Inicia sesión."},403);
     const owned=await env.DB.prepare("SELECT style_id AS styleId FROM user_styles WHERE user_id=?").bind(u.id).all();
     const ownedIds=new Set((owned.results||[]).map(r=>r.styleId));
+    const ownedColors=await env.DB.prepare("SELECT color_id AS colorId FROM user_name_colors WHERE user_id=?").bind(u.id).all();
+    const ownedColorIds=new Set((ownedColors.results||[]).map(r=>r.colorId));
     return json({
       profile:u,
-      styles:STYLES.map(s=>({...s,owned:ownedIds.has(s.id)||s.id==="clasico",equipped:u.profileStyle===s.id}))
+      styles:STYLES.map(s=>({...s,owned:ownedIds.has(s.id)||s.id==="clasico",equipped:u.profileStyle===s.id})),
+      nameColors:NAME_COLORS.map(c=>({...c,owned:ownedColorIds.has(c.id)||c.id==="blanco",equipped:!u.owner&&u.nameColor===c.id}))
     });
   }
 
@@ -233,10 +286,14 @@ async function api(req,env) {
     if(!u) return json({error:"Inicia sesión."},403);
     const owned=await env.DB.prepare("SELECT style_id AS styleId FROM user_styles WHERE user_id=?").bind(u.id).all();
     const ownedIds=new Set((owned.results||[]).map(r=>r.styleId));
+    const ownedColors=await env.DB.prepare("SELECT color_id AS colorId FROM user_name_colors WHERE user_id=?").bind(u.id).all();
+    const ownedColorIds=new Set((ownedColors.results||[]).map(r=>r.colorId));
     return json({
       coins:u.coins,
       equipped:u.profileStyle,
-      styles:STYLES.map(s=>({...s,owned:ownedIds.has(s.id)||s.id==="clasico",equipped:u.profileStyle===s.id}))
+      styles:STYLES.map(s=>({...s,owned:ownedIds.has(s.id)||s.id==="clasico",equipped:u.profileStyle===s.id})),
+      nameColors:NAME_COLORS.map(c=>({...c,owned:ownedColorIds.has(c.id)||c.id==="blanco",equipped:!u.owner&&u.nameColor===c.id})),
+      ownerNameColor:u.owner?OWNER_NAME_COLOR:null
     });
   }
 
@@ -273,6 +330,43 @@ async function api(req,env) {
     await env.DB.prepare("UPDATE users SET profile_style=?,updated_at=? WHERE id=?").bind(styleId,Date.now(),u.id).run();
     await log(env,u.id,"style_equip",u.id,{styleId});
     return json({ok:true,profileStyle:styleId});
+  }
+
+  if(path==="/api/shop/name-color/buy" && req.method==="POST") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    if(u.owner) return json({error:"El color OWNER es exclusivo y no está a la venta."},403);
+    let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const colorId=String(x.colorId||"");
+    const color=NAME_COLOR_BY_ID.get(colorId);
+    if(!color) return json({error:"Color inexistente."},404);
+    const own=await env.DB.prepare("SELECT 1 FROM user_name_colors WHERE user_id=? AND color_id=? LIMIT 1").bind(u.id,colorId).first();
+    if(own||colorId==="blanco") return json({error:"Ya tienes este color."},409);
+    if(u.coins<color.price) return json({error:"No tienes suficientes monedas."},400);
+    const paid=await env.DB.prepare("UPDATE users SET coins=coins-?,updated_at=? WHERE id=? AND coins>=?").bind(color.price,Date.now(),u.id,color.price).run();
+    if(!paid.meta?.changes) return json({error:"No tienes suficientes monedas."},400);
+    try{
+      await env.DB.prepare("INSERT INTO user_name_colors(user_id,color_id,purchased_at) VALUES(?,?,?)").bind(u.id,colorId,Date.now()).run();
+    }catch(e){
+      await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(color.price,Date.now(),u.id).run();
+      return json({error:"No se pudo guardar la compra."},500);
+    }
+    await log(env,u.id,"name_color_buy",u.id,{colorId,price:color.price});
+    return json({ok:true,coins:u.coins-color.price,colorId});
+  }
+
+  if(path==="/api/shop/name-color/equip" && req.method==="POST") {
+    const u=await requireUser(req,env);
+    if(!u) return json({error:"Inicia sesión."},403);
+    if(u.owner) return json({error:"El color OWNER es exclusivo del Owner."},403);
+    let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const colorId=String(x.colorId||"");
+    if(!NAME_COLOR_BY_ID.has(colorId)) return json({error:"Color inexistente."},404);
+    const own=await env.DB.prepare("SELECT 1 FROM user_name_colors WHERE user_id=? AND color_id=? LIMIT 1").bind(u.id,colorId).first();
+    if(!own&&colorId!=="blanco") return json({error:"Primero debes comprar ese color."},403);
+    await env.DB.prepare("UPDATE users SET name_color=?,updated_at=? WHERE id=?").bind(colorId,Date.now(),u.id).run();
+    await log(env,u.id,"name_color_equip",u.id,{colorId});
+    return json({ok:true,nameColor:colorId});
   }if(path==="/api/health" && req.method==="GET") {
     try {
       const rows=await env.DB.prepare(
@@ -334,7 +428,7 @@ async function api(req,env) {
       return json({error:"La cuenta no pudo iniciar sesión. Revisa la base de datos."},500);
     }
 
-    return json({user:{id:userId,username,role,status:"active",bestScore:0,games:0}},201,{"Set-Cookie":cookieHeader(req,"f_session",session,604800)});
+    return json({user:{id:userId,username,role,status:"active",bestScore:0,games:0,coins:300,profileStyle:"clasico",betaTester:false,owner:isOwnerName(username,env),nameColor:"blanco"}},201,{"Set-Cookie":cookieHeader(req,"f_session",session,604800)});
   }
 
   if(path==="/api/login" && req.method==="POST") {
@@ -362,7 +456,8 @@ async function api(req,env) {
       console.error("[login:session]",e);
       return json({error:"No se pudo iniciar la sesión. Revisa la base de datos."},500);
     }
-    return json({user:{id:row.id,username:row.username,role:row.role,status:row.status,bestScore:row.best_score,games:row.games}},200,{"Set-Cookie":cookieHeader(req,"f_session",session,604800)});
+    const notifications=await consumeNotifications(env,row.id);
+    return json({user:{id:row.id,username:row.username,role:row.role,status:row.status,bestScore:row.best_score,games:row.games,coins:row.coins,profileStyle:row.profile_style,betaTester:!!row.beta_tester,owner:isOwnerName(row.username,env),nameColor:row.name_color||"blanco"},notifications},200,{"Set-Cookie":cookieHeader(req,"f_session",session,604800)});
   }
 
   if(path==="/api/logout" && req.method==="POST") {
@@ -372,7 +467,7 @@ async function api(req,env) {
   }
 
   if(path==="/api/ranking" && req.method==="GET") {
-    const rows=await env.DB.prepare("SELECT username,best_score AS score,games,profile_style AS profileStyle,beta_tester AS betaTester FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, games DESC, id ASC LIMIT 100").all();
+    const rows=await env.DB.prepare("SELECT username,best_score AS score,games,profile_style AS profileStyle,beta_tester AS betaTester,name_color AS nameColor FROM users WHERE status='active' AND games>0 ORDER BY best_score DESC, games DESC, id ASC LIMIT 100").all();
     const ranking=(rows.results||[]).map(r=>({...r,betaTester:!!r.betaTester,owner:isOwnerName(r.username,env)}));
     return json({ranking});
   }
@@ -473,7 +568,7 @@ async function api(req,env) {
     if(!admin || !ds) return json({error:"Sesión de desarrollador no autorizada."},403);
 
     if(path==="/api/dev/users" && req.method==="GET") {
-      const rows=await env.DB.prepare("SELECT id,username,role,status,best_score AS bestScore,games,coins,profile_style AS profileStyle,beta_tester AS betaTester,created_at AS createdAt FROM users ORDER BY id DESC").all();
+      const rows=await env.DB.prepare("SELECT id,username,role,status,best_score AS bestScore,games,coins,profile_style AS profileStyle,beta_tester AS betaTester,name_color AS nameColor,created_at AS createdAt FROM users ORDER BY id DESC").all();
       const users=(rows.results||[]).map(r=>({...r,betaTester:!!r.betaTester,owner:isOwnerName(r.username,env)}));
       return json({users,viewerOwner:isOwnerUser(admin,env)});
     }
@@ -521,6 +616,40 @@ async function api(req,env) {
       }
       const fresh=await env.DB.prepare("SELECT beta_tester AS betaTester,coins FROM users WHERE id=?").bind(id).first();
       return json({ok:true,betaTester:!!fresh?.betaTester,coins:fresh?.coins??0,bonusCoins:enabled?10000:0});
+    }
+
+    const passwordMatch=path.match(/^\/api\/dev\/users\/(\d+)\/password$/);
+    if(passwordMatch && req.method==="POST") {
+      if(!isOwnerUser(admin,env)) return json({error:"Solo el Owner puede cambiar contraseñas."},403);
+      let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+      const password=String(x.password||"");
+      if(password.length<8||password.length>128) return json({error:"La contraseña debe tener entre 8 y 128 caracteres."},400);
+      const id=Number(passwordMatch[1]);
+      const target=await env.DB.prepare("SELECT id,username FROM users WHERE id=?").bind(id).first();
+      if(!target) return json({error:"Cuenta no encontrada."},404);
+      const salt=randomSalt();
+      const hash=await passwordHash(password,salt,env.PASSWORD_PEPPER||"",10000);
+      await env.DB.prepare("UPDATE users SET password_hash=?,salt=?,updated_at=? WHERE id=?").bind(hash,salt,Date.now(),id).run();
+      await env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(id).run();
+      await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)")
+        .bind(id,"password_changed",`El administrador ${admin.username} te cambió la contraseña.`,Date.now()).run();
+      await log(env,admin.id,"password_change",id,{notified:true});
+      return json({ok:true,username:target.username});
+    }
+
+    if(path==="/api/dev/test-password-notification" && req.method==="POST") {
+      if(!isOwnerUser(admin,env)) return json({error:"Solo el Owner puede probar esta notificación."},403);
+      let x; try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+      let target=null;
+      if(x?.userId!==undefined && x.userId!==null && String(x.userId)!=="")
+        target=await env.DB.prepare("SELECT id,username FROM users WHERE id=?").bind(Number(x.userId)).first();
+      else if(String(x?.username||"").trim())
+        target=await env.DB.prepare("SELECT id,username FROM users WHERE username=? COLLATE NOCASE LIMIT 1").bind(String(x.username).trim()).first();
+      if(!target) return json({error:"Cuenta no encontrada."},404);
+      await env.DB.prepare("INSERT INTO notifications(user_id,type,message,created_at) VALUES(?,?,?,?)")
+        .bind(target.id,"password_changed_test",`Prueba de notificación: el administrador ${admin.username} te cambió la contraseña.`,Date.now()).run();
+      await log(env,admin.id,"password_notification_test",target.id,{});
+      return json({ok:true,username:target.username});
     }
 
     const scoreMatch=path.match(/^\/api\/dev\/users\/(\d+)\/score$/);
