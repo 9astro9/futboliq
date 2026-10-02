@@ -131,6 +131,7 @@ function renderTurnstile(){
   api("/api/config").then(config=>{
     turnstileConfig=config;
     if(!config.turnstileSiteKey){
+      turnstileRendering=false;
       $("turnstileBox").innerHTML="<div class='small muted'>CAPTCHA no configurado todavía en Cloudflare.</div>";
       return;
     }
