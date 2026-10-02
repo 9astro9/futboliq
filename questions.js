@@ -351,6 +351,21 @@ function expandSimple(facts,difficulty,templates){
   return out;
 }
 
+function expandImpossible(facts){
+  const playerPool=facts.map(f=>f.player);
+  const teamPool=facts.map(f=>f.team);
+  const opponentPool=facts.map(f=>f.opponent);
+  const out=[];
+  facts.forEach((f,i)=>{
+    const a=optionSet(playerPool,f.player,i);
+    out.push([f.cat,"¿Qué jugador hizo un hat-trick contra "+f.opponent+" en el Mundial de "+f.year+"?",a.options,a.correct,"imposible"]);
+    const b=optionSet(opponentPool,f.opponent,i+1);
+    out.push([f.cat,"¿Contra qué selección hizo el hat-trick "+f.player+" en "+f.year+"?",b.options,b.correct,"imposible"]);
+    const c=optionSet(teamPool,f.team,i+2);
+    out.push([f.cat,"¿Qué selección representaba "+f.player+" cuando hizo el hat-trick contra "+f.opponent+" en "+f.year+"?",c.options,c.correct,"imposible"]);
+  });
+  return out;
+}
 const EASY=expandSimple(EASY_FACTS,"facil",SIMPLE_TEMPLATES);
 const NORMAL=expandSimple(NORMAL_FACTS,"dificil",SIMPLE_TEMPLATES);
 const IMPOSSIBLE=expandImpossible(IMPOSSIBLE_FACTS);
