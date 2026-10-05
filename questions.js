@@ -98,7 +98,7 @@ const EASY_FACTS = [
   {type:"legend",ctx:"fue capitán de Argentina en el Mundial 1986",answer:"Diego Maradona",cat:"Leyendas"},
   {type:"legend",ctx:"fue una de las grandes figuras de Países Bajos y del 'fútbol total'",answer:"Johan Cruyff",cat:"Leyendas"},
   {type:"legend",ctx:"marcó dos goles en la final del Mundial 1998",answer:"Zinedine Zidane",cat:"Leyendas"},
-  {type:"legend",ctx:"es conocido como Ronaldo Nazário",answer:"Ronaldo Nazário",cat:"Leyendas"},
+  {type:"legend",ctx:"fue campeón del mundo con Brasil en 1994 y 2002",answer:"Ronaldo Nazário",cat:"Leyendas"},
   {type:"legend",ctx:"fue una de las grandes estrellas de Brasil y Barcelona a comienzos del siglo XXI",answer:"Ronaldinho",cat:"Leyendas"},
   {type:"legend",ctx:"fue el histórico líbero y capitán de Italia, Franco",answer:"Franco Baresi",cat:"Leyendas"},
   {type:"legend",ctx:"fue un referente francés y ganó el Balón de Oro en 1983, 1984 y 1985",answer:"Michel Platini",cat:"Leyendas"},
@@ -312,10 +312,10 @@ function answerEntity(f){
 function smartQuestion(text,f){
   const entity=answerEntity(f);
   if(entity==="player"){
-    return text.replace(/\b(brasileñ[oa]|argentino|argentina|uruguayo|uruguaya|francés|francesa|croata|portugués|portuguesa|inglés|inglesa|italiano|italiana|alem[aá]n|alemana|checo|checa|ucraniano|ucraniana|colombiano|colombiana|chileno|chilena)\b/gi,"").replace(/\s{2,}/g," ");
+    return text.replace(/\b(brasileñ[oa]|argentino|uruguayo|uruguaya|francés|francesa|croata|portugués|portuguesa|inglés|inglesa|italiano|italiana|alem[aá]n|alemana|checo|checa|ucraniano|ucraniana|colombiano|colombiana|chileno|chilena)\b/gi,"").replace(/\s{2,}/g," ");
   }
   if(entity==="club"){
-    return text.replace(/\b(español|española|inglés|inglesa|italiano|italiana|alemán|alemana|neerlandés|neerlandesa|uruguayo|uruguaya|argentino|argentina|brasileño|brasileña)\b/gi,"").replace(/\s{2,}/g," ");
+    return text.replace(/\b(español|española|inglés|inglesa|italiano|italiana|alemán|alemana|neerlandés|neerlandesa|uruguayo|uruguaya|argentino|brasileño|brasileña)\b/gi,"").replace(/\s{2,}/g," ");
   }
   return text;
 }
