@@ -556,6 +556,13 @@ async function api(req,env) {
     }
   }
 
+  if(path==="/api/guest/questions" && req.method==="GET") {
+    const difficulty=String(url.searchParams.get("difficulty")||"facil");
+    if(!QUESTION_SETS[difficulty])return json({error:"Dificultad inválida."},400);
+    const ids=QUESTION_SETS[difficulty];
+    return json({difficulty,questions:ids.map(id=>{const q=QUESTIONS[id];return {category:q[0],q:q[1],options:q[2]}})});
+  }
+
   if(path==="/api/me" && req.method==="GET") {
     const me=await currentUser(req,env);
     if(!me) return json({user:null,notifications:[]});
