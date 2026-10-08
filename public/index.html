@@ -464,8 +464,13 @@ function renderSpecialEvent(event){
   if(!box||!live)return;
   if(!event){
     specialEventData=null;specialEventId="";
-    box.classList.add("hidden");box.innerHTML="";
     live.classList.add("hidden");$("specialEventLiveTime").textContent="";
+    if(user&&user.owner){
+      box.classList.remove("hidden");
+      box.innerHTML="<div class='small muted'>🔥 EVENTO ESPECIAL</div><h2>Evento x5</h2><p>Activá un multiplicador x5 global durante 1 hora y una pregunta especial que vale 100.000 puntos.</p><button class='btn gold' onclick='startSpecialEvent()'>🔥 Activar evento x5 · 1 hora</button>";
+    }else{
+      box.classList.add("hidden");box.innerHTML="";
+    }
     return;
   }
   specialEventData=event;
