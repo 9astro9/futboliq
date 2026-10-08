@@ -49,6 +49,10 @@ function featureHome(){
   if(typeof updateHome==="function")updateHome();
 }
 function openFeature(id){
+  if(typeof guestMode!=="undefined"&&guestMode){
+    alert("⚠️ El modo invitado no puede usar esta función. Creá una cuenta para acceder.");
+    return;
+  }
   featureHideAll();
   const el=$(id);
   if(el){el.classList.remove("hidden");el.scrollIntoView({behavior:"smooth",block:"start"})}
@@ -94,6 +98,7 @@ function addViews(){
 }
 
 function featureLoad(id){
+  if(typeof guestMode!=="undefined"&&guestMode)return;
   if(id==="progreso")loadProgress();
   if(id==="diario")loadDaily();
   if(id==="live")loadLive();
