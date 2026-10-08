@@ -320,8 +320,26 @@ function smartQuestion(text,f){
   return text;
 }
 
-function optionSet(pool,answer,seed){
-  const unique=[...new Set(pool)].filter(x=>x!==answer);
+const RULE_OPTION_POOLS=[
+  {match:/cu[aá]ntos jugadores.*equipo|n[uú]mero reglamentario de titulares|con cu[aá]ntos jugadores inicia/i,pool:["10","11","12","9"]},
+  {match:/cu[aá]nto dura.*partido|duraci[oó]n reglamentaria.*partido|cu[aá]ntos minutos dura.*tiempo reglamentario/i,pool:["80 minutos","90 minutos","100 minutos","105 minutos"]},
+  {match:/cu[aá]nto dura un tiempo|cu[aá]ntos minutos tiene cada mitad|cu[aá]nto dura una parte/i,pool:["30 minutos","45 minutos","50 minutos","60 minutos"]},
+  {match:/qu[eé] tarjeta.*expulsi[oó]n|qu[eé] tarjeta muestra.*expulsar|con qu[eé] tarjeta.*expulsi[oó]n/i,pool:["Tarjeta amarilla","Tarjeta roja","Segunda amarilla","Advertencia verbal"]},
+  {match:/distancia.*punto de penal|cu[aá]ntos metros separan.*punto de penal|distancia del punto de penal/i,pool:["9 metros","10 metros","11 metros","12 metros"]},
+  {match:/cu[aá]ntas amarillas.*expulsi[oó]n|cu[aá]ntas tarjetas amarillas.*doble amarilla|cu[aá]ntas amarillas equivalen/i,pool:["Una","Dos","Tres","Cuatro"]},
+  {match:/saque de banda|con qu[eé] forma.*saque de banda|qu[eé] debe usar.*saque de banda/i,pool:["Con las dos manos","Con una sola mano","Con el pie","Con la cabeza"]},
+  {match:/c[oó]rner|saque de esquina|desde d[oó]nde se ejecuta.*c[oó]rner|d[oó]nde se coloca.*bal[oó]n.*c[oó]rner/i,pool:["Desde el punto de esquina","Desde el punto penal","Desde el centro del campo","Desde el área de meta"]},
+  {match:/puede usar las manos dentro de su propia? [aá]rea|permitido jugar.*manos dentro de su [aá]rea|qu[eé] posici[oó]n puede usar las manos/i,pool:["El arquero","Un defensor","Cualquier jugador","El capitán"]},
+  {match:/infracci[oó]n de offside|t[eé]rmino espa[nñ]ol.*offside|c[oó]mo se denomina.*adelantado/i,pool:["Fuera de juego","Saque de banda","Saque de meta","Córner"]}
+];
+
+function optionSet(pool,answer,seed,fact=null){
+  let source=pool;
+  if(fact?.type==="rule"){
+    const match=RULE_OPTION_POOLS.find(x=>x.match.test(String(fact.question||"")));
+    if(match)source=match.pool;
+  }
+  const unique=[...new Set(source)].filter(x=>x!==answer);
   if(unique.length<2) throw new Error("No hay suficientes opciones para una pregunta");
   const a=unique[seed%unique.length];
   let b=unique[(seed+1)%unique.length];
@@ -355,7 +373,7 @@ function expandSimple(facts,difficulty,templates){
     for(let v=0;v<3;v++){
       const answer=fact.answer;
       const question=smartQuestion(templates[fact.type][v](fact),fact);
-      const set=optionSet(pool,answer,i+v);
+      const set=optionSet(pool,answer,i+v,fact);
       out.push([fact.cat,question,set.options,set.correct,difficulty]);
     }
   });
