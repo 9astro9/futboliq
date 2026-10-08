@@ -294,6 +294,14 @@ async function ensureFeatureTables(env){
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL,
         updated_at INTEGER NOT NULL
+      )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS event_answers(
+        event_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        choice INTEGER NOT NULL,
+        correct INTEGER NOT NULL,
+        answered_at INTEGER NOT NULL,
+        PRIMARY KEY(event_id,user_id)
       )`)
     ]);
   })().catch(e=>{featureSchemaPromise=null;console.error("[feature-db]",e);throw e});
@@ -330,8 +338,24 @@ function weekendMultiplier(){
   }
 }
 let rewardMultiplierCache={value:1,expiresAt:0,override:null};
+async function getActiveSpecialEvent(env){
+  try{
+    await ensureFeatureTables(env);
+    const row=await env.DB.prepare("SELECT value FROM app_settings WHERE key='special_event' LIMIT 1").first();
+    if(!row?.value)return null;
+    const event=JSON.parse(row.value);
+    if(!event||Number(event.activeUntil)<=Date.now())return null;
+    return event;
+  }catch{
+    return null;
+  }
+}
 async function getBaseRewardMultiplier(env){
   const now=Date.now();
+  const specialEvent=await getActiveSpecialEvent(env);
+  if(specialEvent?.multiplier){
+    return Number(specialEvent.multiplier);
+  }
   if(rewardMultiplierCache.expiresAt>now&&rewardMultiplierCache.override!==null)return rewardMultiplierCache.value;
   try{
     await ensureFeatureTables(env);
@@ -905,6 +929,61 @@ async function api(req,env) {
     return json({active:true,id:live.id,category:live.category,q:live.question_text,options:JSON.parse(live.options_json),endsAt:Number(live.ends_at),answered:!!answered,correct:answered?!!answered.correct:null,answers:Number(counts?.total||0),correctAnswers:Number(counts?.correct||0)});
   }
 
+  if(path==="/api/event" && req.method==="GET") {
+    const u=await requireUser(req,env);
+    if(!u)return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    const event=await getActiveSpecialEvent(env);
+    if(!event)return json({active:false});
+    const answer=await env.DB.prepare("SELECT correct FROM event_answers WHERE event_id=? AND user_id=? LIMIT 1").bind(String(event.id),u.id).first();
+    return json({
+      active:true,
+      id:String(event.id),
+      multiplier:Number(event.multiplier||5),
+      startedAt:Number(event.startedAt||0),
+      endsAt:Number(event.activeUntil),
+      title:"EVENTO x5",
+      question:{category:event.category,q:event.question,options:event.options},
+      answered:!!answer,
+      correct:answer?!!answer.correct:null,
+      points:100000
+    });
+  }
+
+  if(path==="/api/event/answer" && req.method==="POST") {
+    const u=await requireUser(req,env);
+    if(!u)return json({error:"Inicia sesión."},403);
+    await ensureFeatureTables(env);
+    let x;try{x=await req.json()}catch{return json({error:"Solicitud inválida"},400);}
+    const event=await getActiveSpecialEvent(env);
+    if(!event)return json({error:"El evento terminó.",active:false},409);
+    const old=await env.DB.prepare("SELECT 1 FROM event_answers WHERE event_id=? AND user_id=? LIMIT 1").bind(String(event.id),u.id).first();
+    if(old)return json({error:"Ya respondiste la pregunta de este evento.",answered:true},409);
+    const choice=Number(x.choice),options=Array.isArray(event.options)?event.options:[];
+    if(!Number.isInteger(choice)||choice<0||choice>=options.length)return json({error:"Respuesta inválida."},400);
+    const correct=choice===Number(event.correctIndex),now=Date.now();
+    const inserted=await env.DB.prepare("INSERT OR IGNORE INTO event_answers(event_id,user_id,choice,correct,answered_at) VALUES(?,?,?,?,?)")
+      .bind(String(event.id),u.id,choice,correct?1:0,now).run();
+    if(!inserted.meta?.changes)return json({error:"Ya respondiste la pregunta de este evento.",answered:true},409);
+    if(correct){
+      const scoreGain=100000;
+      await env.DB.prepare("UPDATE users SET best_score=best_score+?,updated_at=? WHERE id=?").bind(scoreGain,now,u.id).run();
+      await ensureUserStats(env,u.id);
+      const row=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=? LIMIT 1").bind(u.id).first();
+      const wk=weekKey();
+      const streak=Number(row?.current_streak||0)+1,best=Math.max(Number(row?.best_streak||0),streak);
+      const weekly=(row?.weekly_key===wk?Number(row?.weekly_score||0):0)+scoreGain;
+      await env.DB.prepare("UPDATE user_stats SET total_answers=total_answers+1,correct_answers=correct_answers+1,current_streak=?,best_streak=?,weekly_score=?,weekly_key=?,updated_at=? WHERE user_id=?")
+        .bind(streak,best,weekly,wk,now,u.id).run();
+      const after=await env.DB.prepare("SELECT * FROM user_stats WHERE user_id=? LIMIT 1").bind(u.id).first();
+      await maybeUnlockAchievements(env,u.id,after);
+      return json({ok:true,correct:true,points:scoreGain,scoreGain,coins:(await env.DB.prepare("SELECT coins FROM users WHERE id=?").bind(u.id).first())?.coins??u.coins});
+    }
+    await ensureUserStats(env,u.id);
+    await env.DB.prepare("UPDATE user_stats SET total_answers=total_answers+1,current_streak=0,updated_at=? WHERE user_id=?").bind(now,u.id).run();
+    return json({ok:true,correct:false,points:0,scoreGain:0,coins:u.coins});
+  }
+
   if(path==="/api/live/answer" && req.method==="POST") {
     const u=await requireUser(req,env);
     if(!u)return json({error:"Inicia sesión."},403);
@@ -1117,7 +1196,8 @@ if(correct)await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHE
 
     const correct=choice===q[3];
     const meta=DIFFICULTY_META[game.difficulty];
-    const points=correct?meta.points:0;
+    const rewardMultiplier=await getRewardMultiplier(env,u.id);
+    const points=correct?Math.round(meta.points*rewardMultiplier):0;
     const coinGain=correct?meta.coins:0;
     const score=game.score+points;
     const next=game.idx+1;
@@ -1131,10 +1211,9 @@ if(correct)await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHE
       claimed=!!upd.meta?.changes;
     }
     if(!claimed)return json({error:"Esta respuesta ya fue procesada.",alreadyAnswered:true},409);
-    await updateAnswerStats(env,u.id,correct,points);
+    await updateAnswerStats(env,u.id,correct,meta.points);
     if(correct){
       const bonus=next>=ids.length?50:0;
-      const rewardMultiplier=await getRewardMultiplier(env,u.id);
       const awardedCoins=(coinGain+bonus)*rewardMultiplier;
       await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHERE id=?").bind(awardedCoins,now,u.id).run();
     }
@@ -1173,6 +1252,42 @@ if(correct)await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHE
     const admin=await requireUser(req,env,true);
     const ds=await devSession(req,env);
     if(!admin || !ds) return json({error:"Sesión de desarrollador no autorizada."},403);
+
+    if(path==="/api/dev/special-event" && (req.method==="GET" || req.method==="POST")) {
+      const admin=await requireUser(req,env,true);
+      const ds=await devSession(req,env);
+      if(!admin||!ds||!isOwnerUser(admin,env))return json({error:"Solo el OWNER puede administrar el evento."},403);
+      await ensureFeatureTables(env);
+      if(req.method==="GET"){
+        const event=await getActiveSpecialEvent(env);
+        return json({active:!!event,event:event?{
+          id:String(event.id),multiplier:Number(event.multiplier||5),startedAt:Number(event.startedAt||0),
+          endsAt:Number(event.activeUntil),category:event.category,question:event.question,options:event.options
+        }:null});
+      }
+      const pool=QUESTION_SETS.imposible||[];
+      if(!pool.length)return json({error:"No hay preguntas imposibles disponibles."},500);
+      const qid=pool[Math.floor(Math.random()*pool.length)],q=QUESTIONS[qid];
+      const now=Date.now(),activeUntil=now+3600000;
+      const event={
+        id:String(now)+"-"+token().slice(0,10),
+        multiplier:5,
+        startedAt:now,
+        activeUntil,
+        questionId:qid,
+        category:q[0],
+        question:q[1],
+        options:q[2],
+        correctIndex:q[3]
+      };
+      await env.DB.prepare("INSERT INTO app_settings(key,value,updated_at) VALUES('special_event',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at")
+        .bind(JSON.stringify(event),now).run();
+      rewardMultiplierCache={value:5,expiresAt:now+10000,override:null};
+      await env.DB.prepare("INSERT INTO broadcast_messages(sender_user_id,sender_username,message,created_at) VALUES(?,?,?,?)")
+        .bind(admin.id,admin.username,"🚨 EVENTO x5 ACTIVADO · Todas las recompensas están x5 durante 1 hora. Hay una pregunta especial de 100.000 puntos.",now).run();
+      await log(env,admin.id,"special_event_start",null,{eventId:event.id,questionId:qid,endsAt:activeUntil});
+      return json({ok:true,event});
+    }
 
     if(path==="/api/dev/reward-multiplier" && (req.method==="GET" || req.method==="POST")) {
       const admin=await requireUser(req,env,true);
