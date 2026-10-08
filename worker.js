@@ -1248,46 +1248,39 @@ if(correct)await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHE
     return json({ok:true},200,{"Set-Cookie":cookieHeader(req,"f_dev",dev,3600)});
   }
 
+  if(path==="/api/event/start" && req.method==="POST") {
+    const admin=await requireUser(req,env);
+    if(!admin||!isOwnerUser(admin,env))return json({error:"Solo el OWNER puede activar el evento."},403);
+    await ensureFeatureTables(env);
+    const pool=QUESTION_SETS.imposible||[];
+    if(!pool.length)return json({error:"No hay preguntas imposibles disponibles."},500);
+    const qid=pool[Math.floor(Math.random()*pool.length)],q=QUESTIONS[qid];
+    const now=Date.now(),activeUntil=now+3600000;
+    const event={
+      id:String(now)+"-"+token().slice(0,10),
+      multiplier:5,
+      startedAt:now,
+      activeUntil,
+      questionId:qid,
+      category:q[0],
+      question:q[1],
+      options:q[2],
+      correctIndex:q[3]
+    };
+    await env.DB.prepare("INSERT INTO app_settings(key,value,updated_at) VALUES('special_event',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at")
+      .bind(JSON.stringify(event),now).run();
+    rewardMultiplierCache={value:5,expiresAt:now+10000,override:null};
+    await env.DB.prepare("INSERT INTO broadcast_messages(sender_user_id,sender_username,message,created_at) VALUES(?,?,?,?)")
+      .bind(admin.id,admin.username,"🚨 EVENTO x5 ACTIVADO · Todas las recompensas están x5 durante 1 hora. Hay una pregunta especial de 100.000 puntos.",now).run();
+    await log(env,admin.id,"special_event_start",null,{eventId:event.id,questionId:qid,endsAt:activeUntil});
+    return json({ok:true,event});
+  }
+
   if(path.startsWith("/api/dev/")) {
     const admin=await requireUser(req,env,true);
     const ds=await devSession(req,env);
     if(!admin || !ds) return json({error:"Sesión de desarrollador no autorizada."},403);
 
-    if(path==="/api/dev/special-event" && (req.method==="GET" || req.method==="POST")) {
-      const admin=await requireUser(req,env,true);
-      const ds=await devSession(req,env);
-      if(!admin||!ds||!isOwnerUser(admin,env))return json({error:"Solo el OWNER puede administrar el evento."},403);
-      await ensureFeatureTables(env);
-      if(req.method==="GET"){
-        const event=await getActiveSpecialEvent(env);
-        return json({active:!!event,event:event?{
-          id:String(event.id),multiplier:Number(event.multiplier||5),startedAt:Number(event.startedAt||0),
-          endsAt:Number(event.activeUntil),category:event.category,question:event.question,options:event.options
-        }:null});
-      }
-      const pool=QUESTION_SETS.imposible||[];
-      if(!pool.length)return json({error:"No hay preguntas imposibles disponibles."},500);
-      const qid=pool[Math.floor(Math.random()*pool.length)],q=QUESTIONS[qid];
-      const now=Date.now(),activeUntil=now+3600000;
-      const event={
-        id:String(now)+"-"+token().slice(0,10),
-        multiplier:5,
-        startedAt:now,
-        activeUntil,
-        questionId:qid,
-        category:q[0],
-        question:q[1],
-        options:q[2],
-        correctIndex:q[3]
-      };
-      await env.DB.prepare("INSERT INTO app_settings(key,value,updated_at) VALUES('special_event',?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at")
-        .bind(JSON.stringify(event),now).run();
-      rewardMultiplierCache={value:5,expiresAt:now+10000,override:null};
-      await env.DB.prepare("INSERT INTO broadcast_messages(sender_user_id,sender_username,message,created_at) VALUES(?,?,?,?)")
-        .bind(admin.id,admin.username,"🚨 EVENTO x5 ACTIVADO · Todas las recompensas están x5 durante 1 hora. Hay una pregunta especial de 100.000 puntos.",now).run();
-      await log(env,admin.id,"special_event_start",null,{eventId:event.id,questionId:qid,endsAt:activeUntil});
-      return json({ok:true,event});
-    }
 
     if(path==="/api/dev/reward-multiplier" && (req.method==="GET" || req.method==="POST")) {
       const admin=await requireUser(req,env,true);
