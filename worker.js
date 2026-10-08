@@ -877,7 +877,7 @@ async function api(req,env) {
     if(Number(p.completed))return json({error:"Ya completaste el desafío de hoy.",completed:true,score:Number(p.score||0)},409);
     const ids=JSON.parse(p.question_ids||"[]"),idx=Number(p.idx||0),q=QUESTIONS[ids[idx]],choice=Number(x.choice);
     if(!q||!Number.isInteger(choice)||choice<0||choice>=q[2].length)return json({error:"Respuesta inválida."},400);
-    const correct=choice===q[3],points=correct?100:0,next=idx+1,score=Number(p.score||0)+points,now=Date.now();
+    const correct=choice===q[3],boost=await getRewardMultiplier(env,u.id),points=correct?Math.round(100*boost):0,next=idx+1,score=Number(p.score||0)+points,now=Date.now();
     let claimed=false;
     if(next>=ids.length){
       const upd=await env.DB.prepare("UPDATE daily_progress SET idx=?,score=?,completed=1,updated_at=? WHERE user_id=? AND challenge_date=? AND idx=? AND completed=0").bind(next,score,now,u.id,date,idx).run();
@@ -1114,13 +1114,13 @@ if(correct)await env.DB.prepare("UPDATE users SET coins=coins+?,updated_at=? WHE
     if(!d)return json({error:"Duelo no disponible."},404);
     const isCh=Number(d.challenger_id)===u.id,idx=isCh?Number(d.challenger_idx):Number(d.opponent_idx),ids=JSON.parse(d.question_ids||"[]"),q=QUESTIONS[ids[idx]],choice=Number(x.choice);
     if(!q||!Number.isInteger(choice)||choice<0||choice>=q[2].length)return json({error:"Respuesta inválida."},400);
-    const correct=choice===q[3],next=idx+1,now=Date.now();
+    const correct=choice===q[3],boost=await getRewardMultiplier(env,u.id),scoreGain=correct?Math.round(100*boost):0,next=idx+1,now=Date.now();
      let claimed=false;
      if(isCh){
-       const upd=await env.DB.prepare("UPDATE duels SET challenger_idx=?,challenger_score=challenger_score+? WHERE id=? AND status='active' AND challenger_idx=?").bind(next,correct?100:0,d.id,idx).run();
+       const upd=await env.DB.prepare("UPDATE duels SET challenger_idx=?,challenger_score=challenger_score+? WHERE id=? AND status='active' AND challenger_idx=?").bind(next,scoreGain,d.id,idx).run();
        claimed=!!upd.meta?.changes;
      }else{
-       const upd=await env.DB.prepare("UPDATE duels SET opponent_idx=?,opponent_score=opponent_score+? WHERE id=? AND status='active' AND opponent_idx=?").bind(next,correct?100:0,d.id,idx).run();
+       const upd=await env.DB.prepare("UPDATE duels SET opponent_idx=?,opponent_score=opponent_score+? WHERE id=? AND status='active' AND opponent_idx=?").bind(next,scoreGain,d.id,idx).run();
        claimed=!!upd.meta?.changes;
      }
      if(!claimed)return json({error:"Esta respuesta ya fue procesada.",alreadyAnswered:true},409);
