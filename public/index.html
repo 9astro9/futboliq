@@ -135,7 +135,11 @@ th{color:var(--muted);font-weight:650}
 .owner-color-preview{background:linear-gradient(90deg,#35d399,#f6c453,#7dd3fc,#c084fc,#35d399)!important;background-size:200% 100%;animation:ownerShift 4s linear infinite}
 @keyframes ownerShift{to{background-position:200% 0}}
 .owner-chat-box{height:390px;overflow:auto;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--card2);display:flex;flex-direction:column;gap:9px}.owner-chat-msg{max-width:88%;padding:10px 12px;border:1px solid var(--line);border-radius:13px;background:var(--card)}.owner-chat-msg.owner{align-self:flex-end;border-color:rgba(53,211,154,.45);background:rgba(53,211,154,.08)}.owner-chat-name{font-size:12px;font-weight:900;margin-bottom:3px}.owner-chat-text{white-space:pre-wrap;overflow-wrap:anywhere}.owner-chat-time{font-size:11px;color:var(--muted);margin-top:3px}.owner-chat-compose{display:flex;gap:8px;margin-top:10px}.owner-chat-compose input{flex:1}.owner-chat-readonly{margin-top:10px;padding:11px 13px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);font-size:13px}.owner-chat-empty{padding:30px 10px;text-align:center;color:var(--muted)}.broadcast-live{position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-140%);z-index:80;width:min(680px,calc(100% - 28px));padding:16px 18px;border:1px solid var(--accent);background:linear-gradient(135deg,rgba(13,20,34,.98),rgba(17,24,39,.98));border-radius:16px;box-shadow:0 20px 70px rgba(0,0,0,.48),0 0 25px rgba(53,211,154,.18);transition:transform .28s ease}.broadcast-live.show{transform:translateX(-50%) translateY(0)}.broadcast-live strong{display:block;margin-bottom:4px}.broadcast-live .small{color:var(--muted)}
-.weekend-boost{padding:14px 16px;border:1px solid #7c5cff;background:linear-gradient(135deg,#22134d,#0e2533);border-radius:14px;margin:12px 0;font-weight:900;text-align:center}.weekend-boost strong{font-size:18px}.weekend-boost small{display:block;color:var(--muted);font-weight:500;margin-top:2px}.daily-gift{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px;border:1px solid #6f5a18;background:linear-gradient(135deg,#2b230b,#171c22);border-radius:14px;margin:16px 0}.daily-gift-info{display:flex;align-items:center;gap:12px}.daily-gift-icon{font-size:30px}.daily-gift-title{font-weight:900}.daily-gift-desc{font-size:13px;color:var(--muted)}.gift-claimed{opacity:.75}
+.weekend-boost{padding:14px 16px;border:1px solid #7c5cff;background:linear-gradient(135deg,#22134d,#0e2533);border-radius:14px;margin:12px 0;font-weight:900;text-align:center}.weekend-boost strong{font-size:18px}.weekend-boost small{display:block;color:var(--muted);font-weight:500;margin-top:2px}
+.special-event-live{position:fixed;right:18px;top:18px;z-index:79;width:min(390px,calc(100% - 36px));padding:14px 16px;border:1px solid #f6c453;background:linear-gradient(135deg,rgba(67,42,5,.97),rgba(18,26,39,.97));border-radius:16px;box-shadow:0 18px 55px rgba(0,0,0,.45),0 0 22px rgba(246,196,83,.18)}
+.special-event-live strong{display:block;font-size:18px}.special-event-live .small{display:block;color:#ffe9a3;margin-top:2px}
+.special-event-card{margin:14px 0;border:1px solid #f6c453;background:linear-gradient(135deg,rgba(53,39,6,.95),var(--card2))}
+.special-event-card h2{margin:4px 0 6px}.special-event-time{font-size:15px;font-weight:900;color:#f6c453}.special-event-points{font-weight:950;color:#f6c453}.special-event-options{display:grid;gap:9px;margin-top:14px}.daily-gift{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px;border:1px solid #6f5a18;background:linear-gradient(135deg,#2b230b,#171c22);border-radius:14px;margin:16px 0}.daily-gift-info{display:flex;align-items:center;gap:12px}.daily-gift-icon{font-size:30px}.daily-gift-title{font-weight:900}.daily-gift-desc{font-size:13px;color:var(--muted)}.gift-claimed{opacity:.75}
 .notice-modal{position:fixed;inset:0;z-index:50;background:rgba(2,6,12,.72);display:grid;place-items:center;padding:20px}
 .notice-modal.hidden{display:none}
 .notice-box{width:min(520px,100%);background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 25px 80px rgba(0,0,0,.45)}
@@ -195,6 +199,7 @@ th{color:var(--muted);font-weight:650}
       <button class="btn gold" id="dailyGiftBtn" onclick="claimDailyGift()">🎁 Reclamar +150</button>
     </div>
     <div id="weekendBoostBanner" class="weekend-boost hidden"></div>
+    <div id="specialEventBox" class="card special-event-card hidden"></div>
 
     <div class="menu-grid">
       <div class="menu-card" onclick="showView('playView')"><div class="menu-icon">🎮</div><h3>Jugar</h3><p>Elegí una dificultad y empezá una partida.</p></div>
@@ -266,6 +271,11 @@ th{color:var(--muted);font-weight:650}
     <h2 style="margin-top:0">Consola de desarrollador</h2>
     <p class="muted small">Acceso administrativo. Los cambios se aplican en el servidor.</p>
     <div id="devStats" class="status"></div>
+    <div class="card" style="margin-top:14px">
+      <h3 style="margin-top:0">🔥 Evento especial x5</h3>
+      <p class="small muted">Activa para todos durante 1 hora. Las recompensas normales pasan a x5 y aparece una pregunta de 100.000 puntos.</p>
+      <button class="btn gold" onclick="startSpecialEvent()">🔥 Activar evento x5 · 1 hora</button>
+    </div>
     <div id="rewardMultiplierAdmin" class="card" style="margin-top:14px">
       <h3 style="margin-top:0">🚀 Multiplicador de recompensas</h3>
       <p class="small muted">El valor automático es <strong>x3</strong> los sábados y domingos y x1 el resto de la semana. Podés poner el multiplicador que quieras; el valor manual reemplaza al automático hasta que el restablezcas.</p>
@@ -283,6 +293,7 @@ th{color:var(--muted);font-weight:650}
 </main>
 
 <div id="broadcastLive" class="broadcast-live" aria-live="polite"><strong>📢 <span id="broadcastLiveTitle">Mensaje global</span></strong><div id="broadcastLiveMessage"></div><div id="broadcastLiveMeta" class="small"></div></div>
+<div id="specialEventLive" class="special-event-live hidden" aria-live="polite"><strong>🔥 EVENTO x5 ACTIVO</strong><div id="specialEventLiveText">Recompensas x5 durante 1 hora.</div><div id="specialEventLiveTime" class="small"></div></div>
 
 <div id="notificationModal" class="notice-modal hidden" role="dialog" aria-modal="true" aria-labelledby="notificationTitle">
   <div class="notice-box">
@@ -298,6 +309,7 @@ th{color:var(--muted);font-weight:650}
 <script>
 let mode="login",user=null,gameId=null,selectedDifficulty=localStorage.getItem("fql_difficulty")||"facil";
 let gameIndex=1,gameTotal=10,activeRewardMultiplier=1;
+let specialEventPollTimer=null,specialEventCountdownTimer=null,specialEventId="",specialEventData=null;
 let sound=localStorage.getItem("fql_sound")!=="off";
 let theme=localStorage.getItem("fql_theme")||"dark";
 let lang=localStorage.getItem("fql_lang")||"es";
@@ -414,7 +426,7 @@ async function submitAuth(){
     const x=await api(path,{method:"POST",body:JSON.stringify({username,password})});
     user=x.user;
     $("auth").classList.add("hidden");$("app").classList.remove("hidden");
-    updateHome();accountUI();showView("homeView");loadRanking();loadDailyGift();startGlobalBroadcastPolling();showNotifications(x.notifications);
+    updateHome();accountUI();showView("homeView");loadRanking();loadDailyGift();startGlobalBroadcastPolling();startSpecialEventPolling();showNotifications(x.notifications);
   }catch(e){$("authMsg").textContent=e.message}
   finally{btn.disabled=false;btn.textContent=mode==="register"?"Crear mi cuenta":"Entrar"}
 }
@@ -442,6 +454,96 @@ function updateWeekendUI(){
     if(btn&&!btn.disabled)btn.textContent="🎁 Reclamar +150";
   }
 }
+function formatSpecialEventTime(ms){
+  const total=Math.max(0,Math.ceil(Number(ms||0)/1000));
+  const h=Math.floor(total/3600),m=Math.floor((total%3600)/60),s=total%60;
+  return h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+}
+function renderSpecialEvent(event){
+  const box=$("specialEventBox"),live=$("specialEventLive");
+  if(!box||!live)return;
+  if(!event){
+    specialEventData=null;specialEventId="";
+    box.classList.add("hidden");box.innerHTML="";
+    live.classList.add("hidden");$("specialEventLiveTime").textContent="";
+    return;
+  }
+  specialEventData=event;
+  specialEventId=String(event.id);
+  box.classList.remove("hidden");
+  const ownerControls=user&&user.owner
+    ? "<div class='feature-actions' style='margin-top:14px'><button class='btn gold' onclick='startSpecialEvent()'>🔥 Reiniciar evento x5</button></div>"
+    : "";
+  const status=event.answered
+    ? "<div class='notice'>"+(event.correct?"✅ Ya acertaste: +100.000 puntos.":"❌ Ya respondiste este evento.")+"</div>"
+    : "<div class='special-event-options'>"+event.question.options.map((o,i)=>"<button class='btn option' data-special-choice='"+i+"'>"+escapeHtml(o)+"</button>").join("")+"</div>";
+  box.innerHTML="<div class='small muted'>🔥 EVENTO x5</div><h2>Pregunta especial · 100.000 puntos</h2><div class='special-event-time' id='specialEventCardTime'>Termina en "+formatSpecialEventTime(Number(event.endsAt)-Date.now())+"</div>"+categoryBadge(event.question.category)+"<h2 class='question'>"+escapeHtml(event.question.q)+"</h2>"+status+ownerControls;
+  live.classList.remove("hidden");
+  $("specialEventLiveText").textContent="Recompensas x5 · pregunta especial de 100.000 puntos.";
+  document.querySelectorAll("[data-special-choice]").forEach(b=>b.onclick=()=>answerSpecialEvent(Number(b.dataset.specialChoice)));
+}
+async function loadSpecialEvent(){
+  if(!user)return;
+  try{
+    const x=await api("/api/event");
+    if(!x.active){renderSpecialEvent(null);return}
+    const changed=String(x.id)!==String(specialEventId);
+    renderSpecialEvent(x);
+    if(changed){
+      showGlobalBroadcast({sender:"FUTBOLIQ",message:"🔥 EVENTO x5 ACTIVADO · Recompensas x5 durante 1 hora · Pregunta especial: 100.000 puntos.",createdAt:Date.now()});
+    }
+  }catch{}
+}
+function updateSpecialEventCountdown(){
+  if(!specialEventData)return;
+  const left=Math.max(0,Number(specialEventData.endsAt)-Date.now());
+  const text="Termina en "+formatSpecialEventTime(left);
+  const card=$("specialEventCardTime");
+  if(card)card.textContent=text;
+  const live=$("specialEventLiveTime");
+  if(live)live.textContent=text;
+  if(left<=0)loadSpecialEvent();
+}
+function startSpecialEventPolling(){
+  if(specialEventPollTimer)return;
+  loadSpecialEvent();
+  specialEventPollTimer=setInterval(loadSpecialEvent,5000);
+  specialEventCountdownTimer=setInterval(updateSpecialEventCountdown,1000);
+}
+function stopSpecialEventPolling(){
+  if(specialEventPollTimer)clearInterval(specialEventPollTimer);
+  if(specialEventCountdownTimer)clearInterval(specialEventCountdownTimer);
+  specialEventPollTimer=null;specialEventCountdownTimer=null;specialEventData=null;specialEventId="";
+  const box=$("specialEventBox"),live=$("specialEventLive");
+  if(box){box.classList.add("hidden");box.innerHTML=""}
+  if(live)live.classList.add("hidden");
+}
+async function startSpecialEvent(){
+  if(!user||!user.owner)return;
+  try{
+    const x=await api("/api/event/start",{method:"POST",body:"{}"});
+    showGlobalBroadcast({sender:user.username,message:"🔥 EVENTO x5 ACTIVADO · Dura 1 hora · Pregunta especial de 100.000 puntos.",createdAt:Date.now()});
+    await loadSpecialEvent();
+  }catch(e){alert(e.message||"No se pudo activar el evento.")}
+}
+async function answerSpecialEvent(choice){
+  const buttons=document.querySelectorAll("[data-special-choice]");
+  buttons.forEach(b=>b.disabled=true);
+  try{
+    const x=await api("/api/event/answer",{method:"POST",body:JSON.stringify({choice})});
+    if(x.correct){
+      user.bestScore=Number(user.bestScore||0)+100000;
+      updateHome();loadRanking();beep(1200);
+    }else beep(220);
+    alert(x.correct?"🔥 ¡CORRECTO! +100.000 puntos":"❌ Incorrecto. Esta pregunta solo se puede responder una vez.");
+    await loadSpecialEvent();
+  }catch(e){
+    buttons.forEach(b=>b.disabled=false);
+    alert(e.message||"No se pudo responder.");
+    await loadSpecialEvent();
+  }
+}
+
 async function loadDailyGift(){
   if(!user)return;
   try{
@@ -712,10 +814,10 @@ async function loadRanking(){
 async function refreshMe(){
   try{
     const x=await api("/api/me");
-    if(x.user){user=x.user;$("auth").classList.add("hidden");$("app").classList.remove("hidden");updateHome();showView("homeView");loadRanking();loadDailyGift();startGlobalBroadcastPolling();showNotifications(x.notifications)}
+    if(x.user){user=x.user;$("auth").classList.add("hidden");$("app").classList.remove("hidden");updateHome();showView("homeView");loadRanking();loadDailyGift();startGlobalBroadcastPolling();startSpecialEventPolling();showNotifications(x.notifications)}
   }catch{}
 }
-async function logout(){try{stopGlobalBroadcastPolling();stopOwnerChatPolling();await api("/api/logout",{method:"POST"})}finally{location.reload()}}
+async function logout(){try{stopGlobalBroadcastPolling();stopOwnerChatPolling();stopSpecialEventPolling();await api("/api/logout",{method:"POST"})}finally{location.reload()}}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
 
 function downloadProfilePhoto(){
