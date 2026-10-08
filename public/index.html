@@ -179,6 +179,8 @@ th{color:var(--muted);font-weight:650}
   <button type="button" class="btn primary" style="width:100%" onclick="submitAuth()" id="authBtn">Entrar</button>
   <div id="authMsg" class="notice muted"></div>
   <p id="authHint" class="small muted">Inicia sesión para jugar, personalizar tu perfil y competir en el top global.</p>
+  <button type="button" class="btn" style="width:100%;margin-top:8px" onclick="enterGuestMode()">👤 Jugar como invitado</button>
+  <div class="small muted" style="margin-top:10px;padding:10px 12px;border:1px dashed var(--line);border-radius:12px">⚠️ <strong>Modo invitado:</strong> tu progreso se guarda solo en este navegador. No podés entrar al ranking ni tener foto de perfil.</div>
 </section>
 
 <main id="app" class="hidden">
@@ -203,10 +205,10 @@ th{color:var(--muted);font-weight:650}
 
     <div class="menu-grid">
       <div class="menu-card" onclick="showView('playView')"><div class="menu-icon">🎮</div><h3>Jugar</h3><p>Elegí una dificultad y empezá una partida.</p></div>
-      <div class="menu-card" onclick="showView('profileView');loadProfile()"><div class="menu-icon">👤</div><h3>Mi perfil</h3><p>Estadísticas, estilo equipado y progreso.</p></div>
-      <div class="menu-card" onclick="showView('shopView');loadShop()"><div class="menu-icon">🛍️</div><h3>Tienda</h3><p>Comprá y equipá estilos para tu perfil.</p></div>
-      <div class="menu-card" onclick="showView('rankingView');loadRanking()"><div class="menu-icon">🏆</div><h3>Top global</h3><p>Consultá las mejores puntuaciones.</p></div>
-      <div class="menu-card" onclick="showView('ownerChatView');loadOwnerChat()"><div class="menu-icon">💬</div><h3>Chat del OWNER</h3><p>Hablá con todos desde el canal oficial del Owner.</p></div>
+      <div id="memberProfileCard" class="menu-card" onclick="showView('profileView');loadProfile()"><div class="menu-icon">👤</div><h3>Mi perfil</h3><p>Estadísticas, estilo equipado y progreso.</p></div>
+      <div id="memberShopCard" class="menu-card" onclick="showView('shopView');loadShop()"><div class="menu-icon">🛍️</div><h3>Tienda</h3><p>Comprá y equipá estilos para tu perfil.</p></div>
+      <div id="memberRankingCard" class="menu-card" onclick="showView('rankingView');loadRanking()"><div class="menu-icon">🏆</div><h3>Top global</h3><p>Consultá las mejores puntuaciones.</p></div>
+      <div id="memberChatCard" class="menu-card" onclick="showView('ownerChatView');loadOwnerChat()"><div class="menu-icon">💬</div><h3>Chat del OWNER</h3><p>Hablá con todos desde el canal oficial del Owner.</p></div>
     </div>
   </section>
 
@@ -307,7 +309,7 @@ th{color:var(--muted);font-weight:650}
 </div>
 
 <script>
-let mode="login",user=null,gameId=null,selectedDifficulty=localStorage.getItem("fql_difficulty")||"facil";
+let mode="login",user=null,guestMode=false,guestQuestionsCache={},guestGame=null,gameId=null,selectedDifficulty=localStorage.getItem("fql_difficulty")||"facil";
 let gameIndex=1,gameTotal=10,activeRewardMultiplier=1;
 let specialEventPollTimer=null,specialEventCountdownTimer=null,specialEventId="",specialEventData=null;
 let sound=localStorage.getItem("fql_sound")!=="off";
@@ -385,6 +387,44 @@ const T={
 const $=id=>document.getElementById(id);
 function tr(k){return(T[lang]||T.es)[k]||k}
 function api(path,options={}){return fetch(path,{credentials:"same-origin",headers:{"content-type":"application/json",...(options.headers||{})},...options}).then(async r=>{let x={};try{x=await r.json()}catch{}if(!r.ok)throw new Error(x.error||"Error");return x})}
+function guestStorageKey(){return "fql_guest_v1"}
+function loadGuestStats(){
+  try{
+    const raw=localStorage.getItem(guestStorageKey());
+    const data=raw?JSON.parse(raw):{};
+    return {bestScore:Number(data.bestScore||0),coins:Number(data.coins??300),games:Number(data.games||0),xp:Number(data.xp||0)};
+  }catch{return {bestScore:0,coins:300,games:0,xp:0}}
+}
+function saveGuestStats(data){localStorage.setItem(guestStorageKey(),JSON.stringify(data))}
+function guestNotice(){
+  return "⚠️ <strong>Estás jugando como invitado.</strong> Tus puntos, monedas y partidas se guardan solamente en este navegador. No aparecés en el ranking y no tenés foto de perfil.";
+}
+function setGuestUI(){
+  guestMode=true;user=null;
+  const stats=loadGuestStats();
+  $("auth").classList.add("hidden");$("app").classList.remove("hidden");
+  $("guestNotice").classList.remove("hidden");$("guestNotice").innerHTML=guestNotice();
+  ["memberProfileCard","memberShopCard","memberRankingCard","memberChatCard"].forEach(id=>{const el=$(id);if(el)el.classList.add("hidden")});
+  document.querySelectorAll("[id^='feature-card-']").forEach(el=>el.classList.add("hidden"));
+  $("homeName").textContent="Invitado";
+  $("homeScore").textContent=stats.bestScore.toLocaleString("es-ES");
+  $("homeCoins").textContent=stats.coins.toLocaleString("es-ES");
+  $("homeGames").textContent=stats.games.toLocaleString("es-ES");
+  $("accountArea").innerHTML="<span class='small muted'>👤 Invitado</span><button class='btn' onclick='exitGuestMode()'>Salir</button>";
+}
+function enterGuestMode(){
+  if(user)return;
+  loadGuestStats();
+  setGuestUI();
+  showView("homeView");
+}
+function exitGuestMode(){guestMode=false;guestGame=null;location.reload()}
+function requireAccount(message){
+  if(!guestMode)return true;
+  alert(message||"Esta función requiere una cuenta.");
+  return false;
+}
+
 function applyPrefs(){
   document.documentElement.classList.toggle("light",theme==="light");
   $("soundBtn").textContent=sound?"Activado":"Desactivado";
@@ -399,7 +439,12 @@ function openSettings(){showView("settingsView")}
 function openPlay(){showView("playView")}
 function openShop(){showView("shopView");loadShop()}
 function showView(id){
+  if(guestMode&&["profileView","shopView","rankingView","ownerChatView","devPanel"].includes(id)){
+    alert(id==="rankingView"?"⚠️ El modo invitado no puede entrar al ranking.":"⚠️ Esta sección requiere una cuenta.");
+    return;
+  }
   ["homeView","playView","profileView","shopView","rankingView","settingsView","gameView","ownerChatView","devPanel"].forEach(v=>$(v).classList.add("hidden"));
+  document.querySelectorAll("main>section[id$='View']").forEach(v=>{if(v.id!==id&&v.id!=="homeView"&&v.id!=="playView"&&v.id!=="profileView"&&v.id!=="shopView"&&v.id!=="rankingView"&&v.id!=="settingsView"&&v.id!=="gameView"&&v.id!=="ownerChatView"&&v.id!=="devPanel"){}});
   $(id).classList.remove("hidden");
 }
 function goHome(){showView("homeView");updateHome()}
@@ -431,6 +476,10 @@ async function submitAuth(){
   finally{btn.disabled=false;btn.textContent=mode==="register"?"Crear mi cuenta":"Entrar"}
 }
 function accountUI(){
+  if(guestMode){
+    $("accountArea").innerHTML="<span class='small muted'>👤 Invitado</span><button class='btn' onclick='exitGuestMode()'>Salir</button>";
+    return;
+  }
   if(!user)return;
   const ownerBadge=user.owner?"<span class='badge-owner'>OWNER</span>":"";
   const betaBadge=user.betaTester?"<span class='badge-beta'>BETA TESTER</span>":"";
@@ -550,7 +599,7 @@ async function answerSpecialEvent(choice){
 }
 
 async function loadDailyGift(){
-  if(!user)return;
+  if(guestMode||!user)return;
   try{
     const x=await api("/api/daily-gift");
     if(x.multiplier!==undefined&&typeof updateWeekendUIWithMultiplier==="function")updateWeekendUIWithMultiplier(x.multiplier);
@@ -561,7 +610,7 @@ async function loadDailyGift(){
   }catch{if($("giftStatus"))$("giftStatus").textContent="No se pudo comprobar el regalo diario."}
 }
 async function claimDailyGift(){
-  const btn=$("dailyGiftBtn");if(!user||btn.disabled)return;
+  const btn=$("dailyGiftBtn");if(guestMode||!user||btn.disabled)return;
   btn.disabled=true;btn.textContent="Cobrando…";
   try{
     const x=await api("/api/daily-gift",{method:"POST",body:"{}"});
@@ -690,6 +739,15 @@ async function sendOwnerChat(){
 }
 
 function updateHome(){
+  if(guestMode){
+    const stats=loadGuestStats();
+    $("homeName").textContent="Invitado";
+    $("homeScore").textContent=Number(stats.bestScore||0).toLocaleString("es-ES");
+    $("homeCoins").textContent=Number(stats.coins||0).toLocaleString("es-ES");
+    $("homeGames").textContent=Number(stats.games||0).toLocaleString("es-ES");
+    accountUI();
+    return;
+  }
   if(!user)return;
   $("homeName").innerHTML=nameHtml(user.username||"—",user.nameColor,user.owner)+" "+rankHtml(user.profileRank);
   $("homeScore").textContent=Number(user.bestScore||0).toLocaleString("es-ES");
@@ -703,6 +761,9 @@ function setDifficulty(d){
 }
 function difficultyLabel(d){return d==="facil"?"Fácil":d==="dificil"?"Normal":d==="imposible"?"Imposible":"Blassvec Modo"}
 async function startGame(){
+  if(guestMode){
+    return startGuestGame();
+  }
   try{
     const x=await api("/api/game",{method:"POST",body:JSON.stringify({difficulty:selectedDifficulty})});
     gameId=x.gameId;gameIndex=1;gameTotal=x.total||10;
@@ -712,10 +773,67 @@ async function startGame(){
     showView("gameView");showQuestion(x.question);
   }catch(e){alert(e.message)}
 }
+async function loadGuestQuestions(difficulty){
+  if(guestQuestionsCache[difficulty])return guestQuestionsCache[difficulty];
+  const x=await api("/api/guest/questions?difficulty="+encodeURIComponent(difficulty));
+  const list=Array.isArray(x.questions)?x.questions.filter(q=>Array.isArray(q.options)&&q.options.length===3):[];
+  if(!list.length)throw new Error("No hay preguntas para esta dificultad.");
+  guestQuestionsCache[difficulty]=list;
+  return list;
+}
+function guestPointsForDifficulty(d){
+  return d==="facil"?100:d==="dificil"?175:d==="imposible"?300:0;
+}
+function guestCoinsForDifficulty(d){
+  return d==="facil"?8:d==="dificil"?14:d==="imposible"?25:0;
+}
+async function startGuestGame(){
+  try{
+    const pool=await loadGuestQuestions(selectedDifficulty);
+    const total=selectedDifficulty==="blassvec"?30:10;
+    const picked=[],used=new Set();
+    while(picked.length<total&&picked.length<pool.length){
+      const i=Math.floor(Math.random()*pool.length);
+      if(!used.has(i)){used.add(i);picked.push(pool[i])}
+    }
+    guestGame={difficulty:selectedDifficulty,questions:picked,index:0,score:0};
+    gameId=null;gameIndex=1;gameTotal=picked.length;
+    $("gameDiff").textContent=difficultyLabel(selectedDifficulty);
+    $("gameNum").textContent="1";$("gameScore").textContent="0";
+    const stats=loadGuestStats();$("gameCoins").textContent=stats.coins.toLocaleString("es-ES");
+    $("gameProgress").style.width=(100/gameTotal)+"%";
+    showView("gameView");showQuestion(picked[0]);
+  }catch(e){alert(e.message||"No se pudo iniciar el modo invitado.")}
+}
 function showQuestion(q){
   $("gameArea").innerHTML=categoryBadge(q.category)+"<h1 class='question'>"+escapeHtml(q.q)+"</h1><div class='options'>"+q.options.map((o,i)=>"<button class='btn option' onclick='answer("+i+")'>"+escapeHtml(o)+"</button>").join("")+"</div>";
 }
+async function answerGuest(i){
+  document.querySelectorAll("#gameArea .option").forEach(b=>b.disabled=true);
+  if(!guestGame)return;
+  const q=guestGame.questions[guestGame.index];
+  const correct=Number(i)===Number(q.correctIndex??-1);
+  const points=correct?guestPointsForDifficulty(guestGame.difficulty):0;
+  const coins=correct?guestCoinsForDifficulty(guestGame.difficulty):0;
+  guestGame.score+=points;
+  const stats=loadGuestStats();
+  if(correct)stats.coins+=coins;
+  guestGame.index++;
+  $("gameScore").textContent=guestGame.score.toLocaleString("es-ES");
+  $("gameCoins").textContent=stats.coins.toLocaleString("es-ES");
+  beep(correct?720:220);
+  if(guestGame.index>=guestGame.questions.length){
+    stats.games+=1;
+    stats.bestScore=Math.max(stats.bestScore,guestGame.score);
+    saveGuestStats(stats);updateHome();
+    $("gameArea").innerHTML="<h2>🏆 Partida de invitado terminada</h2><p>Puntuación: <strong>"+guestGame.score.toLocaleString("es-ES")+"</strong></p><p>Monedas locales: <strong>"+stats.coins.toLocaleString("es-ES")+"</strong></p><p class='small muted'>⚠️ Esta puntuación no se sube al ranking.</p><div class='actions'><button class='btn primary' onclick='goHome()'>Volver al menú</button><button class='btn' onclick='startGame()'>Jugar otra</button></div>";
+    guestGame=null;return;
+  }
+  const next=guestGame.questions[guestGame.index];
+  gameIndex++;$("gameNum").textContent=gameIndex;$("gameProgress").style.width=(gameIndex/gameTotal*100)+"%";showQuestion(next);
+}
 async function answer(i){
+  if(guestMode)return answerGuest(i);
   document.querySelectorAll(".option").forEach(b=>b.disabled=true);
   try{
     const x=await api("/api/answer",{method:"POST",body:JSON.stringify({gameId,choice:i})});
@@ -732,10 +850,12 @@ async function answer(i){
   }catch(e){$("gameArea").innerHTML="<p class='muted'>"+escapeHtml(e.message)+"</p>"}
 }
 async function abandonGame(){
+  if(guestMode){guestGame=null;gameId=null;goHome();return}
   if(gameId){try{await api("/api/game/abandon",{method:"POST",body:JSON.stringify({gameId})})}catch{}}
   gameId=null;goHome();
 }
 async function loadProfile(){
+  if(!requireAccount("⚠️ El perfil y la foto de perfil requieren una cuenta."))return;
   try{
     const x=await api("/api/profile");user=x.profile;updateHome();
     const style=STYLES[user.profileStyle]||STYLES.clasico;
@@ -751,6 +871,7 @@ async function loadProfile(){
   }catch(e){$("profileView").innerHTML="<p class='muted'>"+escapeHtml(e.message)+"</p>"}
 }
 async function loadShop(){
+  if(!requireAccount("⚠️ La tienda requiere una cuenta."))return;
   try{
     const x=await api("/api/shop");
     $("shopCoins").textContent=Number(x.coins||0).toLocaleString("es-ES");
@@ -809,6 +930,7 @@ async function equipNameColor(id){
   catch(e){alert(e.message)}
 }
 async function loadRanking(){
+  if(guestMode){$("rankingContent").innerHTML="<div class='card'><h3>🔒 Ranking no disponible</h3><p>El modo invitado no participa en el ranking global. Creá una cuenta para competir.</p></div>";return}
   try{
     const x=await api("/api/ranking");
     $("rankingContent").innerHTML="<table><thead><tr><th>#</th><th>Jugador</th><th>Puntos</th><th>Partidas</th><th>Estilo</th></tr></thead><tbody>"+
@@ -819,13 +941,14 @@ async function loadRanking(){
 async function refreshMe(){
   try{
     const x=await api("/api/me");
-    if(x.user){user=x.user;$("auth").classList.add("hidden");$("app").classList.remove("hidden");updateHome();showView("homeView");loadRanking();loadDailyGift();startGlobalBroadcastPolling();startSpecialEventPolling();showNotifications(x.notifications)}
+    if(x.user){guestMode=false;user=x.user;$("auth").classList.add("hidden");$("app").classList.remove("hidden");$("guestNotice").classList.add("hidden");updateHome();showView("homeView");loadRanking();loadDailyGift();startGlobalBroadcastPolling();startSpecialEventPolling();showNotifications(x.notifications)}
   }catch{}
 }
 async function logout(){try{stopGlobalBroadcastPolling();stopOwnerChatPolling();stopSpecialEventPolling();await api("/api/logout",{method:"POST"})}finally{location.reload()}}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
 
 function downloadProfilePhoto(){
+  if(guestMode){alert("⚠️ El modo invitado no tiene foto de perfil.");return}
   if(!user)return;
   const c=document.createElement("canvas"),ctx=c.getContext("2d"),size=1024;c.width=size;c.height=size;
   const palette={clasico:["#0b1712","#35d399"],neon:["#15143b","#00f5d4"],fuego:["#351010","#ff8a00"],hielo:["#102d43","#8be7ff"],oro:["#3e2b04","#f6c453"],carbono:["#111","#7b7f86"],retro:["#3b2919","#d7a45c"],cosmico:["#1d0c47","#e04dff"],mundial:["#0d392e","#35d399"]}[user.profileStyle]||["#111827","#35d399"];
