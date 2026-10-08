@@ -404,8 +404,10 @@ function setGuestUI(){
   const stats=loadGuestStats();
   $("auth").classList.add("hidden");$("app").classList.remove("hidden");
   $("guestNotice").classList.remove("hidden");$("guestNotice").innerHTML=guestNotice();
-  ["memberProfileCard","memberShopCard","memberRankingCard","memberChatCard"].forEach(id=>{const el=$(id);if(el)el.classList.add("hidden")});
+  ["memberProfileCard","memberShopCard","memberRankingCard","memberChatCard","dailyGiftBox","weekendBoostBanner","specialEventBox"].forEach(id=>{const el=$(id);if(el)el.classList.add("hidden")});
   document.querySelectorAll("[id^='feature-card-']").forEach(el=>el.classList.add("hidden"));
+  const heroText=document.querySelector("#homeView .hero p");
+  if(heroText)heroText.textContent="Modo invitado: jugá y progresá en este navegador. Tus datos no se suben a una cuenta.";
   $("homeName").textContent="Invitado";
   $("homeScore").textContent=stats.bestScore.toLocaleString("es-ES");
   $("homeCoins").textContent=stats.coins.toLocaleString("es-ES");
@@ -444,7 +446,6 @@ function showView(id){
     return;
   }
   ["homeView","playView","profileView","shopView","rankingView","settingsView","gameView","ownerChatView","devPanel"].forEach(v=>$(v).classList.add("hidden"));
-  document.querySelectorAll("main>section[id$='View']").forEach(v=>{if(v.id!==id&&v.id!=="homeView"&&v.id!=="playView"&&v.id!=="profileView"&&v.id!=="shopView"&&v.id!=="rankingView"&&v.id!=="settingsView"&&v.id!=="gameView"&&v.id!=="ownerChatView"&&v.id!=="devPanel"){}});
   $(id).classList.remove("hidden");
 }
 function goHome(){showView("homeView");updateHome()}
